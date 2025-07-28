@@ -7,13 +7,10 @@ This project is a full-stack invoice document analysis tool powered by **Azure F
 ---
 
 ## Live Demo
-[ View Deployed App Here](https://your-replit-or-vercel-link)
-
-## GitHub Repository
-[ View Code on GitHub](https://github.com/your-username/invoice-intelligence-app)
+[ View Deployed App Here](https://invoice-analysis-ai.vercel.app/)
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 - **Frontend:** Next.js 15+, TypeScript, TailwindCSS, Zustand
 - **Backend:** Node.js (Express), Azure SDK
 - **AI/OCR:** Azure Form Recognizer (Document Intelligence)
@@ -26,8 +23,7 @@ This project is a full-stack invoice document analysis tool powered by **Azure F
 
 ### 1. Clone the Repo
 ```bash
-git clone https://github.com/your-username/invoice-intelligence-app.git
-cd invoice-intelligence-app
+git clone https://github.com/moscharrito/InvoiceAnalysisAI.git
 ```
 
 ### 2. Install Dependencies
