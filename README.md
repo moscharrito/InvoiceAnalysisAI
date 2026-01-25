@@ -1,5 +1,3 @@
-// Project description + usage
-
 # AI Invoice Intelligence App (Azure OCR + Next.js)
 
 This project is a full-stack invoice document analysis tool powered by **Azure Form Recognizer** (OCR). It's designed to showcase how AI can be used to extract structured data (like invoice totals, vendor name, line items, etc.) from unstructured PDF/PNG documents.
