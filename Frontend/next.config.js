@@ -6,8 +6,7 @@ const nextConfig = {
     appDir: false, // Using pages directory
   },
   env: {
-    NEXT_PUBLIC_AZURE_ENDPOINT: process.env.NEXT_PUBLIC_AZURE_ENDPOINT,
-    NEXT_PUBLIC_AZURE_KEY: process.env.NEXT_PUBLIC_AZURE_KEY,
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
   }
 };
 
