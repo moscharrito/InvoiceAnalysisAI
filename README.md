@@ -4,16 +4,47 @@ This project is a full-stack invoice document analysis tool powered by **Azure F
 
 ---
 
+## Project Structure
+
+```
+InvoiceAnalysisAI/
+├── Frontend/                 # Next.js React application
+│   ├── components/          # React UI components
+│   ├── pages/               # Next.js pages
+│   ├── services/            # API service layer
+│   ├── styles/              # CSS and Tailwind styles
+│   ├── utils/               # Utility functions
+│   └── public/              # Static assets
+├── Backend/                  # Express.js API server
+│   └── src/
+│       ├── routes/          # API route handlers
+│       ├── services/        # Business logic (Azure OCR)
+│       └── middleware/      # Express middleware
+└── package.json             # Root monorepo configuration
+```
+
+---
+
 ## Live Demo
-[ View Deployed App Here](https://invoice-analysis-ai.vercel.app/)
+[View Deployed App Here](https://invoice-analysis-ai.vercel.app/)
+
 ---
 
 ## Tech Stack
-- **Frontend:** Next.js 15+, TypeScript, TailwindCSS, Zustand
-- **Backend:** Node.js (Express), Azure SDK
-- **AI/OCR:** Azure Form Recognizer (Document Intelligence)
-- **Storage (Optional):** PostgreSQL, Drizzle ORM
-- **Deployment:** Replit or Vercel
+
+### Frontend
+- Next.js 15+
+- React 18
+- TypeScript
+- TailwindCSS
+- Axios
+
+### Backend
+- Node.js
+- Express.js
+- TypeScript
+- Multer (file uploads)
+- Azure Form Recognizer SDK
 
 ---
 
@@ -22,32 +53,64 @@ This project is a full-stack invoice document analysis tool powered by **Azure F
 ### 1. Clone the Repo
 ```bash
 git clone https://github.com/moscharrito/InvoiceAnalysisAI.git
+cd InvoiceAnalysisAI
 ```
 
 ### 2. Install Dependencies
 ```bash
 npm install
 ```
+This will install dependencies for both Frontend and Backend workspaces.
 
-### 3. Setup Azure Form Recognizer
-- Go to Azure Portal → Create "Form Recognizer" resource
-- Note the **Endpoint** and **API Key**
-- Add them to your `.env.local`:
+### 3. Setup Environment Variables
+
+**Backend (.env)**
+```bash
+cd Backend
+cp .env.example .env
+```
+Edit `Backend/.env`:
 ```env
-AZURE_FORM_RECOGNIZER_ENDPOINT=https://<your-region>.api.cognitive.microsoft.com/
-AZURE_FORM_RECOGNIZER_KEY=<your-api-key>
+AZURE_ENDPOINT=https://<your-region>.api.cognitive.microsoft.com/
+AZURE_KEY=<your-api-key>
+PORT=5000
+FRONTEND_URL=http://localhost:3000
 ```
 
-### 4. Start Dev Server
+**Frontend (.env)**
+```bash
+cd Frontend
+cp .env.example .env
+```
+Edit `Frontend/.env`:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+```
+
+### 4. Start Development Servers
+
+**Run both Frontend and Backend concurrently:**
 ```bash
 npm run dev
 ```
+
+**Or run separately:**
+```bash
+# Terminal 1 - Backend
+npm run dev:backend
+
+# Terminal 2 - Frontend
+npm run dev:frontend
+```
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5000
 
 ---
 
 ## Features
 - Upload PDF or image invoice
-- Sends document to Azure Form Recognizer
+- Sends document to Azure Form Recognizer via Backend API
 - Extracts:
   - Vendor name
   - Invoice number
@@ -55,26 +118,17 @@ npm run dev
   - Total amount
   - Line items (description, quantity, price)
 - Displays data in clean Tailwind UI
-- Option to download or copy extracted data
+- Option to download or copy extracted data as JSON
 
 ---
 
-## Azure Integration Sample (Node.js Backend)
-```ts
-import { AzureKeyCredential, DocumentAnalysisClient } from "@azure/ai-form-recognizer";
+## API Endpoints
 
-const endpoint = process.env.AZURE_FORM_RECOGNIZER_ENDPOINT;
-const key = process.env.AZURE_FORM_RECOGNIZER_KEY;
-
-const client = new DocumentAnalysisClient(endpoint, new AzureKeyCredential(key));
-
-async function analyzeInvoice(fileBuffer: Buffer) {
-  const poller = await client.beginAnalyzeDocument("prebuilt-invoice", fileBuffer);
-  const { documents } = await poller.pollUntilDone();
-
-  return documents[0]; // return structured invoice data
-}
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Health check |
+| GET | `/api/invoice/status` | Check Azure configuration status |
+| POST | `/api/invoice/analyze` | Analyze uploaded invoice |
 
 ---
 
@@ -92,9 +146,9 @@ Pull requests are welcome! For major changes, please open an issue first.
 ---
 
 ## Contact
-Made with ❤️ by Moshood Bolaji Salaudeen. [LinkedIn](https://linkedin.com/in/moshood-bolaji-salaudeen)
+Made by Moshood Bolaji Salaudeen. [LinkedIn](https://linkedin.com/in/moshood-bolaji-salaudeen)
 
 ---
 
-## 📜 License
+## License
 MIT
