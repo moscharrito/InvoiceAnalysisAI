@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { analyzeInvoice } from '../lib/azureOCR';
+import { analyzeInvoice } from '../services/api';
 import { parseInvoiceData, ParsedInvoiceData } from '../utils/parseInvoice';
 import UploadForm from '../components/UploadForm';
 import InvoiceCard from '../components/InvoiceCard';
