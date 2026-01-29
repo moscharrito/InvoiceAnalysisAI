@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { analyzeInvoice } from '../services/api';
 import { parseInvoiceData, ParsedInvoiceData } from '../utils/parseInvoice';
 import UploadForm from '../components/UploadForm';
@@ -9,6 +9,11 @@ export default function Home() {
   const [parsedData, setParsedData] = useState<ParsedInvoiceData | null>(null);
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleFileUpload = async (file: File) => {
     try {
@@ -41,94 +46,291 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[url('/cut-paper-background.png')] bg-cover bg-fixed bg-no-repeat text-center text-gray-800">
-      <div className="max-w-4xl mx-auto p-6 flex flex-col items-center justify-center min-h-screen">
-        <header className="w-full bg-yellow-500 text-white rounded-xl shadow-lg py-8 px-4 mb-12">
-          <h1 className="text-5xl font-bold tracking-wide mb-2">Invoice Intelligence</h1>
-          <p className="text-lg tracking-wide font-light">Powered by Azure AI</p>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Aurora Animated Background */}
+      <div className="aurora-bg" />
+
+      {/* Grid Overlay */}
+      <div className="grid-overlay" />
+
+      {/* Floating Gradient Orbs */}
+      <div className="floating-orb orb-purple w-96 h-96 -top-20 -left-20 animate-blob" />
+      <div className="floating-orb orb-pink w-80 h-80 top-1/3 -right-10 animate-blob animation-delay-2000" />
+      <div className="floating-orb orb-cyan w-72 h-72 bottom-20 left-1/4 animate-blob animation-delay-4000" />
+      <div className="floating-orb orb-blue w-64 h-64 top-2/3 right-1/3 animate-blob animation-delay-1000" />
+
+      {/* Main Content Container */}
+      <div className={`relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen flex flex-col transition-opacity duration-1000 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+
+        {/* Header Section */}
+        <header className="text-center pt-8 pb-12 animate-slide-down">
+          {/* Floating Logo Badge */}
+          <div className="inline-flex items-center justify-center mb-6">
+            <div className="glass-card px-6 py-3 flex items-center gap-3 border-gradient-animated">
+              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 animate-pulse" />
+              <span className="text-sm font-medium text-white/80 tracking-wider uppercase">
+                AI-Powered Analysis
+              </span>
+            </div>
+          </div>
+
+          {/* Main Title */}
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-4 tracking-tight">
+            <span className="text-gradient">Invoice</span>
+            <br />
+            <span className="text-white">Intelligence</span>
+          </h1>
+
+          {/* Subtitle */}
+          <p className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto mb-8 leading-relaxed">
+            Transform your invoices into structured data with the power of
+            <span className="text-gradient-static font-semibold"> Azure AI</span>
+          </p>
+
+          {/* Action Button when results exist */}
           {(invoiceData || parsedData) && (
             <button
               onClick={resetApp}
-              className="mt-6 px-6 py-2 bg-yellow-600 text-white rounded-full shadow-md hover:bg-yellow-700 transition-all"
+              className="glass-button group inline-flex items-center gap-2"
             >
-              + New Analysis
+              <span className="relative z-10 flex items-center gap-2">
+                <svg className="w-5 h-5 transition-transform group-hover:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                New Analysis
+              </span>
             </button>
           )}
         </header>
 
-        <main className="w-full space-y-10">
+        {/* Main Content Area */}
+        <main className="flex-1 w-full">
+
+          {/* Upload Section - Initial State */}
           {!invoiceData && !parsedData && !isLoading && !error && (
-            <section className="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md">
-              <p className="text-lg text-gray-600 mb-6">Upload an invoice to extract and summarize key data</p>
-              <UploadForm onUpload={handleFileUpload} />
+            <section className="animate-fade-in">
+              <div className="max-w-xl mx-auto">
+                {/* Glass Upload Card */}
+                <div className="glass-frosted p-8 sm:p-12 relative overflow-hidden noise-overlay">
+                  {/* Decorative Corner Elements */}
+                  <div className="absolute top-0 left-0 w-20 h-20 border-l-2 border-t-2 border-purple-500/30 rounded-tl-3xl" />
+                  <div className="absolute bottom-0 right-0 w-20 h-20 border-r-2 border-b-2 border-pink-500/30 rounded-br-3xl" />
+
+                  {/* Icon */}
+                  <div className="flex justify-center mb-8">
+                    <div className="w-20 h-20 rounded-2xl glass-card flex items-center justify-center pulse-ring">
+                      <svg className="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <h2 className="text-2xl sm:text-3xl font-semibold text-white text-center mb-3">
+                    Upload Your Invoice
+                  </h2>
+
+                  {/* Description */}
+                  <p className="text-white/50 text-center mb-8 max-w-md mx-auto">
+                    Drop your invoice file below and watch AI extract every detail in seconds
+                  </p>
+
+                  {/* Upload Form */}
+                  <UploadForm onUpload={handleFileUpload} />
+
+                  {/* Supported Formats */}
+                  <div className="mt-8 flex flex-wrap justify-center gap-2">
+                    {['PDF', 'PNG', 'JPG', 'TIFF'].map((format) => (
+                      <span
+                        key={format}
+                        className="glass-badge"
+                      >
+                        {format}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Feature Cards */}
+                <div className="grid grid-cols-3 gap-4 mt-8">
+                  {[
+                    { icon: '⚡', title: 'Fast', desc: 'Instant extraction' },
+                    { icon: '🎯', title: 'Accurate', desc: 'AI-powered OCR' },
+                    { icon: '🔒', title: 'Secure', desc: 'Data protected' },
+                  ].map((feature, idx) => (
+                    <div
+                      key={feature.title}
+                      className={`glass-card-hover p-4 text-center animate-slide-up`}
+                      style={{ animationDelay: `${(idx + 1) * 100}ms` }}
+                    >
+                      <div className="text-2xl mb-2">{feature.icon}</div>
+                      <div className="text-white font-medium text-sm">{feature.title}</div>
+                      <div className="text-white/40 text-xs">{feature.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </section>
           )}
 
+          {/* Loading State */}
           {isLoading && (
-            <section className="py-20 flex flex-col items-center">
-              <div className="animate-spin rounded-full h-14 w-14 border-4 border-yellow-500 border-t-transparent mb-6"></div>
-              <h3 className="text-2xl font-semibold text-yellow-700">Processing Invoice...</h3>
-              <p className="text-gray-600 mt-2">Analyzing your document. Please wait.</p>
+            <section className="flex flex-col items-center justify-center py-20 animate-fade-in">
+              <div className="glass-frosted p-12 text-center max-w-md mx-auto">
+                {/* Animated Spinner */}
+                <div className="relative mb-8">
+                  <div className="glass-spinner mx-auto" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 animate-pulse" />
+                  </div>
+                </div>
+
+                {/* Loading Text */}
+                <h3 className="text-2xl font-semibold text-white mb-3">
+                  Analyzing Invoice
+                </h3>
+                <p className="text-white/50 mb-6">
+                  Our AI is extracting data from your document...
+                </p>
+
+                {/* Progress Indicator */}
+                <div className="glass-progress w-full max-w-xs mx-auto">
+                  <div className="glass-progress-bar animate-shimmer" style={{ width: '70%' }} />
+                </div>
+
+                {/* Status Steps */}
+                <div className="mt-8 space-y-3 text-left max-w-xs mx-auto">
+                  {[
+                    { text: 'Document received', done: true },
+                    { text: 'Processing with Azure AI', done: true },
+                    { text: 'Extracting invoice data', done: false },
+                  ].map((step, idx) => (
+                    <div key={idx} className="flex items-center gap-3 text-sm">
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${step.done ? 'bg-green-500/20 text-green-400' : 'bg-purple-500/20 text-purple-400 animate-pulse'}`}>
+                        {step.done ? (
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <div className="w-2 h-2 rounded-full bg-current" />
+                        )}
+                      </div>
+                      <span className={step.done ? 'text-white/70' : 'text-white'}>{step.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </section>
           )}
 
+          {/* Error State */}
           {error && (
-            <section className="max-w-md mx-auto bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-lg p-6">
-              <h3 className="text-lg font-bold mb-2">Oops! Something went wrong.</h3>
-              <p className="mb-4">{error}</p>
-              <button
-                onClick={resetApp}
-                className="px-6 py-2 bg-yellow-600 text-white rounded-full hover:bg-yellow-700 transition"
-              >
-                Try Again
-              </button>
+            <section className="max-w-lg mx-auto animate-scale-in">
+              <div className="glass-frosted p-8 border border-red-500/20 relative overflow-hidden">
+                {/* Error Glow */}
+                <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent pointer-events-none" />
+
+                <div className="relative z-10 text-center">
+                  {/* Error Icon */}
+                  <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-red-500/20 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+
+                  {/* Error Title */}
+                  <h3 className="text-xl font-semibold text-white mb-2">
+                    Analysis Failed
+                  </h3>
+
+                  {/* Error Message */}
+                  <p className="text-red-300/80 mb-6 text-sm">
+                    {error}
+                  </p>
+
+                  {/* Retry Button */}
+                  <button
+                    onClick={resetApp}
+                    className="glass-button bg-gradient-to-r from-red-500/30 to-orange-500/30 hover:from-red-500/50 hover:to-orange-500/50"
+                  >
+                    <span className="relative z-10 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Try Again
+                    </span>
+                  </button>
+                </div>
+              </div>
             </section>
           )}
 
+          {/* Results Section */}
           {(invoiceData || parsedData) && (
-            <section className="w-full space-y-10">
-              <div className="max-w-md mx-auto bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-md py-3 px-6 text-center font-medium shadow">
-                Invoice processed successfully!
+            <section className="space-y-8 animate-fade-in">
+              {/* Success Banner */}
+              <div className="glass-card p-4 border border-green-500/20 max-w-lg mx-auto flex items-center justify-center gap-3">
+                <div className="status-dot" />
+                <span className="text-green-400 font-medium">Invoice analyzed successfully</span>
               </div>
 
+              {/* Summary Cards */}
               {parsedData && (
-                <section className="max-w-xl mx-auto">
-                  <h3 className="text-2xl font-semibold text-yellow-700 mb-6">Invoice Summary</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="max-w-4xl mx-auto">
+                  <h3 className="text-2xl font-semibold text-white text-center mb-8">
+                    <span className="text-gradient-static">Invoice</span> Summary
+                  </h3>
+
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                      { label: 'Vendor', value: parsedData.vendorName },
-                      { label: 'Invoice ID', value: parsedData.invoiceId },
-                      { label: 'Date', value: parsedData.invoiceDate },
-                      { label: 'Total', value: parsedData.totalAmount, highlight: true },
-                    ].map(({ label, value, highlight }) => (
+                      { label: 'Vendor', value: parsedData.vendorName, icon: '🏢' },
+                      { label: 'Invoice ID', value: parsedData.invoiceId, icon: '#️⃣' },
+                      { label: 'Date', value: parsedData.invoiceDate, icon: '📅' },
+                      { label: 'Total', value: parsedData.totalAmount, icon: '💰', highlight: true },
+                    ].map((item, idx) => (
                       <div
-                        key={label}
-                        className={`bg-white border border-yellow-200 rounded-xl p-4 shadow-sm text-center ${
-                          highlight ? 'text-yellow-700 font-semibold text-lg' : ''
-                        }`}
+                        key={item.label}
+                        className={`glass-card-hover p-6 text-center relative overflow-hidden ${item.highlight ? 'border-purple-500/30 col-span-2 lg:col-span-1' : ''}`}
+                        style={{ animationDelay: `${idx * 100}ms` }}
                       >
-                        <div className="text-sm text-gray-500">{label}</div>
-                        <div className="mt-1">{value || 'N/A'}</div>
+                        {item.highlight && (
+                          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 pointer-events-none" />
+                        )}
+                        <div className="relative z-10">
+                          <div className="text-2xl mb-3">{item.icon}</div>
+                          <div className="text-white/50 text-xs uppercase tracking-wider mb-1">{item.label}</div>
+                          <div className={`font-semibold truncate ${item.highlight ? 'text-xl text-gradient-static' : 'text-white'}`}>
+                            {item.value || 'N/A'}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
-                </section>
+                </div>
               )}
 
+              {/* Detailed Invoice Data */}
               {invoiceData && (
-                <section className="max-w-xl mx-auto">
-                  <h3 className="text-2xl font-semibold text-yellow-700 mb-4">Detailed Invoice Data</h3>
-                  <div className="bg-white border border-yellow-100 rounded-xl shadow p-4">
-                    <InvoiceCard data={invoiceData} />
-                  </div>
-                </section>
+                <div className="max-w-5xl mx-auto">
+                  <InvoiceCard data={invoiceData} />
+                </div>
               )}
             </section>
           )}
         </main>
 
-        <footer className="w-full mt-24 text-center text-sm text-yellow-900 bg-yellow-100 py-6 rounded-t-xl">
-          <p>&copy; {new Date().getFullYear()} Invoice Intelligence — AI Form Recognition</p>
+        {/* Footer */}
+        <footer className="mt-auto pt-16 pb-8">
+          <div className="glass-card p-6 text-center">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
+              <span className="text-white/60 text-sm font-medium">Invoice Intelligence</span>
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-pink-500 to-cyan-500" />
+            </div>
+            <p className="text-white/40 text-xs">
+              &copy; {new Date().getFullYear()} Powered by Azure AI Document Intelligence
+            </p>
+          </div>
         </footer>
       </div>
     </div>
