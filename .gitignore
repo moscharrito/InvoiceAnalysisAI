@@ -1,6 +1,40 @@
-# .gitignore
+# Dependencies
 node_modules/
+**/node_modules/
+
+# Environment files
 .env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+
+# Next.js build output
 .next/
+Frontend/.next/
 out/
+Frontend/out/
+
+# Backend build output
+Backend/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+
+# Package locks (optional - you may want to keep these)
+# package-lock.json
