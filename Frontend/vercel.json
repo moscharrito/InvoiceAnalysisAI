@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "invoice-analysis-frontend",
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
