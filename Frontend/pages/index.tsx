@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { analyzeInvoice } from '../services/api';
 import { parseInvoiceData, ParsedInvoiceData } from '../utils/parseInvoice';
 import UploadForm from '../components/UploadForm';
 import InvoiceCard from '../components/InvoiceCard';
+import DecisionTrace from '../components/DecisionTrace';
 
 export default function Home() {
   const [invoiceData, setInvoiceData] = useState<any>(null);
@@ -10,16 +11,50 @@ export default function Home() {
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [uploadedFileName, setUploadedFileName] = useState<string>('');
+  const stepIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Simulate step progression during analysis
+  useEffect(() => {
+    if (isLoading) {
+      setCurrentStep(0);
+      stepIntervalRef.current = setInterval(() => {
+        setCurrentStep((prev) => {
+          if (prev < 5) return prev + 1;
+          return prev;
+        });
+      }, 1500); // Progress every 1.5 seconds
+    } else {
+      if (stepIntervalRef.current) {
+        clearInterval(stepIntervalRef.current);
+        stepIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (stepIntervalRef.current) {
+        clearInterval(stepIntervalRef.current);
+      }
+    };
+  }, [isLoading]);
+
   const handleFileUpload = async (file: File) => {
     try {
       setError('');
       setIsLoading(true);
+      setUploadedFileName(file.name);
+      setCurrentStep(0);
+
       const result = await analyzeInvoice(file);
+
+      // Complete all steps on success
+      setCurrentStep(6);
+
       if (result?.analyzeResult?.documents?.[0]?.fields) {
         const fields = result.analyzeResult.documents[0].fields;
         setInvoiceData(fields);
@@ -43,6 +78,8 @@ export default function Home() {
     setParsedData(null);
     setError('');
     setIsLoading(false);
+    setCurrentStep(0);
+    setUploadedFileName('');
   };
 
   return (
@@ -60,7 +97,7 @@ export default function Home() {
       <div className="floating-orb orb-warm w-64 h-64 top-2/3 right-1/3 animate-float animation-delay-1000" />
 
       {/* Main Content Container */}
-      <div className={`relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen flex flex-col transition-opacity duration-1000 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen flex flex-col transition-opacity duration-1000 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
 
         {/* Header Section */}
         <header className="text-center pt-8 pb-12 animate-slide-down">
@@ -190,93 +227,201 @@ export default function Home() {
             </section>
           )}
 
-          {/* Loading State */}
+          {/* Loading State - Side by Side Layout */}
           {isLoading && (
-            <section className="flex flex-col items-center justify-center py-20 animate-fade-in">
-              <div className="glass-frosted p-12 text-center max-w-md mx-auto">
-                {/* Animated Spinner */}
-                <div className="relative mb-8">
-                  <div className="glass-spinner mx-auto" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 animate-pulse" />
+            <section className="animate-fade-in">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 max-w-6xl mx-auto">
+                {/* Left Side - Document Preview & Status */}
+                <div className="lg:col-span-3">
+                  <div className="glass-frosted p-8 h-full relative overflow-hidden">
+                    {/* Decorative Elements */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-100/50 to-transparent rounded-full blur-2xl" />
+
+                    <div className="relative z-10">
+                      {/* Document Icon & File Info */}
+                      <div className="flex items-start gap-6 mb-8">
+                        <div className="w-20 h-24 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center flex-shrink-0 shadow-lg">
+                          <svg className="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-xl font-semibold text-charcoal-800 mb-1">
+                            Analyzing Document
+                          </h3>
+                          <p className="text-charcoal-500 text-sm mb-3 truncate">
+                            {uploadedFileName || 'invoice.pdf'}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                            <span className="text-xs text-amber-600 font-medium">Processing in progress...</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Animated Document Visualization */}
+                      <div className="relative bg-white/50 rounded-2xl p-6 border border-amber-100 mb-6">
+                        <div className="space-y-4">
+                          {/* Scanning Animation Lines */}
+                          <div className="relative h-4 bg-charcoal-100 rounded overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-amber-200 via-amber-400 to-amber-200 animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
+                          </div>
+                          <div className="relative h-4 bg-charcoal-100 rounded overflow-hidden w-3/4">
+                            <div className="absolute inset-0 bg-gradient-to-r from-amber-200 via-amber-400 to-amber-200 animate-shimmer animation-delay-100" style={{ backgroundSize: '200% 100%' }} />
+                          </div>
+                          <div className="relative h-4 bg-charcoal-100 rounded overflow-hidden w-5/6">
+                            <div className="absolute inset-0 bg-gradient-to-r from-amber-200 via-amber-400 to-amber-200 animate-shimmer animation-delay-200" style={{ backgroundSize: '200% 100%' }} />
+                          </div>
+
+                          <div className="pt-4 border-t border-charcoal-100">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <div className="h-3 bg-charcoal-100 rounded w-20 animate-pulse" />
+                                <div className="h-5 bg-charcoal-100 rounded w-32 animate-pulse animation-delay-100" />
+                              </div>
+                              <div className="space-y-2">
+                                <div className="h-3 bg-charcoal-100 rounded w-16 animate-pulse animation-delay-200" />
+                                <div className="h-5 bg-charcoal-100 rounded w-24 animate-pulse animation-delay-300" />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-4 border-t border-charcoal-100">
+                            <div className="h-3 bg-charcoal-100 rounded w-24 mb-3 animate-pulse" />
+                            <div className="space-y-2">
+                              {[1, 2, 3].map((i) => (
+                                <div key={i} className="flex justify-between items-center">
+                                  <div className="h-4 bg-charcoal-100 rounded w-40 animate-pulse" style={{ animationDelay: `${i * 100}ms` }} />
+                                  <div className="h-4 bg-charcoal-100 rounded w-20 animate-pulse" style={{ animationDelay: `${i * 150}ms` }} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Scanning Overlay */}
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+                          <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-amber-500 to-transparent animate-scan" />
+                        </div>
+                      </div>
+
+                      {/* Current Action */}
+                      <div className="glass-card p-4 flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                          <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-charcoal-800">
+                            {currentStep === 0 && 'Uploading document...'}
+                            {currentStep === 1 && 'Pre-processing image...'}
+                            {currentStep === 2 && 'Running OCR extraction...'}
+                            {currentStep === 3 && 'Analyzing invoice fields...'}
+                            {currentStep === 4 && 'Validating extracted data...'}
+                            {currentStep >= 5 && 'Generating results...'}
+                          </p>
+                          <p className="text-xs text-charcoal-400">
+                            Azure AI Document Intelligence
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Loading Text */}
-                <h3 className="text-2xl font-semibold text-charcoal-800 mb-3">
-                  Analyzing Invoice
-                </h3>
-                <p className="text-charcoal-500 mb-6">
-                  Our AI is extracting data from your document...
-                </p>
-
-                {/* Progress Indicator */}
-                <div className="glass-progress w-full max-w-xs mx-auto">
-                  <div className="glass-progress-bar animate-shimmer" style={{ width: '70%' }} />
-                </div>
-
-                {/* Status Steps */}
-                <div className="mt-8 space-y-3 text-left max-w-xs mx-auto">
-                  {[
-                    { text: 'Document received', done: true },
-                    { text: 'Processing with Azure AI', done: true },
-                    { text: 'Extracting invoice data', done: false },
-                  ].map((step, idx) => (
-                    <div key={idx} className="flex items-center gap-3 text-sm">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${step.done ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600 animate-pulse'}`}>
-                        {step.done ? (
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        ) : (
-                          <div className="w-2 h-2 rounded-full bg-current" />
-                        )}
-                      </div>
-                      <span className={step.done ? 'text-charcoal-500' : 'text-charcoal-800'}>{step.text}</span>
-                    </div>
-                  ))}
+                {/* Right Side - Decision Trace */}
+                <div className="lg:col-span-2">
+                  <DecisionTrace
+                    currentStep={currentStep}
+                    isComplete={false}
+                    isError={false}
+                  />
                 </div>
               </div>
             </section>
           )}
 
-          {/* Error State */}
+          {/* Error State - Side by Side Layout */}
           {error && (
-            <section className="max-w-lg mx-auto animate-scale-in">
-              <div className="glass-frosted p-8 border border-red-200 relative overflow-hidden">
-                {/* Error Glow */}
-                <div className="absolute inset-0 bg-gradient-to-br from-red-50 to-transparent pointer-events-none" />
+            <section className="animate-scale-in">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 max-w-6xl mx-auto">
+                {/* Left Side - Error Message */}
+                <div className="lg:col-span-3">
+                  <div className="glass-frosted p-8 border border-red-200 relative overflow-hidden h-full">
+                    {/* Error Glow */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-red-50 to-transparent pointer-events-none" />
 
-                <div className="relative z-10 text-center">
-                  {/* Error Icon */}
-                  <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-red-100 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
+                    <div className="relative z-10">
+                      {/* Error Icon */}
+                      <div className="flex items-start gap-6 mb-6">
+                        <div className="w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-semibold text-charcoal-800 mb-2">
+                            Analysis Failed
+                          </h3>
+                          <p className="text-red-600 text-sm mb-4">
+                            {error}
+                          </p>
+                          {uploadedFileName && (
+                            <p className="text-charcoal-400 text-xs">
+                              File: {uploadedFileName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Suggestions */}
+                      <div className="bg-white/50 rounded-xl p-4 mb-6 border border-charcoal-100">
+                        <h4 className="text-sm font-medium text-charcoal-700 mb-3">Suggestions:</h4>
+                        <ul className="space-y-2 text-sm text-charcoal-600">
+                          <li className="flex items-start gap-2">
+                            <svg className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            Ensure the document is a valid invoice format
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <svg className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            Check that text is clearly visible and not blurry
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <svg className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            Try a different file format (PDF recommended)
+                          </li>
+                        </ul>
+                      </div>
+
+                      {/* Retry Button */}
+                      <button
+                        onClick={resetApp}
+                        className="w-full px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white font-medium rounded-xl hover:from-red-600 hover:to-orange-600 transition-all shadow-lg"
+                      >
+                        <span className="flex items-center justify-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Try Again
+                        </span>
+                      </button>
+                    </div>
                   </div>
+                </div>
 
-                  {/* Error Title */}
-                  <h3 className="text-xl font-semibold text-charcoal-800 mb-2">
-                    Analysis Failed
-                  </h3>
-
-                  {/* Error Message */}
-                  <p className="text-red-600 mb-6 text-sm">
-                    {error}
-                  </p>
-
-                  {/* Retry Button */}
-                  <button
-                    onClick={resetApp}
-                    className="px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white font-medium rounded-xl hover:from-red-600 hover:to-orange-600 transition-all shadow-lg"
-                  >
-                    <span className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Try Again
-                    </span>
-                  </button>
+                {/* Right Side - Decision Trace showing error */}
+                <div className="lg:col-span-2">
+                  <DecisionTrace
+                    currentStep={currentStep}
+                    isComplete={false}
+                    isError={true}
+                    errorMessage={error}
+                  />
                 </div>
               </div>
             </section>
