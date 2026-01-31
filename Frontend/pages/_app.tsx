@@ -9,7 +9,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <title>Invoice Intelligence | AI-Powered Document Analysis</title>
         <meta name="description" content="Transform invoices into structured data with Azure AI. Extract vendor details, line items, and totals instantly." />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-        <meta name="theme-color" content="#0f0f23" />
+        <meta name="theme-color" content="#fefefe" />
         <link rel="icon" href="/favicon.ico" />
 
         {/* Open Graph */}
