@@ -29,7 +29,7 @@ export default function Home() {
           if (prev < 5) return prev + 1;
           return prev;
         });
-      }, 7500); // Progress every 7.5 seconds for extended visibility
+      }, 60000); // Progress every 60 seconds for extended visibility
     } else {
       if (stepIntervalRef.current) {
         clearInterval(stepIntervalRef.current);
