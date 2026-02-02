@@ -233,7 +233,7 @@ export default function InvoiceCard({ data }: InvoiceCardProps) {
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
             <div className="status-dot" />
-            <span className="text-charcoal-500">AI Confidence</span>
+            <span className="text-charcoal-500">Model Confidence</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-32 h-2 rounded-full bg-charcoal-100 overflow-hidden">
