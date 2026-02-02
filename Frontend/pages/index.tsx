@@ -13,6 +13,8 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
+  const [pendingResult, setPendingResult] = useState<any>(null);
+  const [isAnimatingCompletion, setIsAnimatingCompletion] = useState(false);
   const stepIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -21,14 +23,13 @@ export default function Home() {
 
   // Simulate step progression during analysis
   useEffect(() => {
-    if (isLoading) {
-      setCurrentStep(0);
+    if (isLoading || isAnimatingCompletion) {
       stepIntervalRef.current = setInterval(() => {
         setCurrentStep((prev) => {
           if (prev < 5) return prev + 1;
           return prev;
         });
-      }, 1500); // Progress every 1.5 seconds
+      }, 2500); // Progress every 2.5 seconds for better visibility
     } else {
       if (stepIntervalRef.current) {
         clearInterval(stepIntervalRef.current);
@@ -41,7 +42,34 @@ export default function Home() {
         clearInterval(stepIntervalRef.current);
       }
     };
-  }, [isLoading]);
+  }, [isLoading, isAnimatingCompletion]);
+
+  // Handle completion animation - show remaining steps before displaying results
+  useEffect(() => {
+    if (pendingResult && !isLoading) {
+      setIsAnimatingCompletion(true);
+    }
+  }, [pendingResult, isLoading]);
+
+  // When all steps are complete and we have pending result, show the results
+  useEffect(() => {
+    if (isAnimatingCompletion && currentStep >= 5 && pendingResult) {
+      // Wait a moment on the final step before showing results
+      const finalDelay = setTimeout(() => {
+        setCurrentStep(6);
+        if (pendingResult.success && pendingResult.data?.analyzeResult?.documents?.[0]?.fields) {
+          const fields = pendingResult.data.analyzeResult.documents[0].fields;
+          setInvoiceData(fields);
+          const parsed = parseInvoiceData(pendingResult.data);
+          setParsedData(parsed);
+        }
+        setIsAnimatingCompletion(false);
+        setPendingResult(null);
+      }, 1500); // Show final step for 1.5 seconds
+
+      return () => clearTimeout(finalDelay);
+    }
+  }, [isAnimatingCompletion, currentStep, pendingResult]);
 
   const handleFileUpload = async (file: File) => {
     try {
@@ -49,17 +77,14 @@ export default function Home() {
       setIsLoading(true);
       setUploadedFileName(file.name);
       setCurrentStep(0);
+      setPendingResult(null);
+      setIsAnimatingCompletion(false);
 
       const result = await analyzeInvoice(file);
 
-      // Complete all steps on success
-      setCurrentStep(6);
-
       if (result?.analyzeResult?.documents?.[0]?.fields) {
-        const fields = result.analyzeResult.documents[0].fields;
-        setInvoiceData(fields);
-        const parsed = parseInvoiceData(result);
-        setParsedData(parsed);
+        // Store result and let animation complete
+        setPendingResult({ success: true, data: result });
       } else {
         throw new Error('No invoice data found in the document');
       }
@@ -68,6 +93,8 @@ export default function Home() {
       setError(err instanceof Error ? err.message : 'Failed to process invoice');
       setInvoiceData(null);
       setParsedData(null);
+      setPendingResult(null);
+      setIsAnimatingCompletion(false);
     } finally {
       setIsLoading(false);
     }
@@ -228,7 +255,7 @@ export default function Home() {
           )}
 
           {/* Loading State - Side by Side Layout */}
-          {isLoading && (
+          {(isLoading || isAnimatingCompletion) && (
             <section className="animate-fade-in">
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 max-w-6xl mx-auto">
                 {/* Left Side - Document Preview & Status */}
@@ -247,14 +274,16 @@ export default function Home() {
                         </div>
                         <div className="flex-1">
                           <h3 className="text-xl font-semibold text-charcoal-800 mb-1">
-                            Analyzing Document
+                            {isAnimatingCompletion ? 'Finalizing Analysis' : 'Analyzing Document'}
                           </h3>
                           <p className="text-charcoal-500 text-sm mb-3 truncate">
                             {uploadedFileName || 'invoice.pdf'}
                           </p>
                           <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                            <span className="text-xs text-amber-600 font-medium">Processing in progress...</span>
+                            <div className={`w-2 h-2 rounded-full animate-pulse ${isAnimatingCompletion ? 'bg-green-500' : 'bg-amber-500'}`} />
+                            <span className={`text-xs font-medium ${isAnimatingCompletion ? 'text-green-600' : 'text-amber-600'}`}>
+                              {isAnimatingCompletion ? 'Data received, completing steps...' : 'Processing in progress...'}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -332,7 +361,7 @@ export default function Home() {
                 <div className="lg:col-span-2">
                   <DecisionTrace
                     currentStep={currentStep}
-                    isComplete={false}
+                    isComplete={currentStep >= 5 && isAnimatingCompletion}
                     isError={false}
                   />
                 </div>
