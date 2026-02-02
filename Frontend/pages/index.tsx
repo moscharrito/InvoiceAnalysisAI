@@ -29,7 +29,7 @@ export default function Home() {
           if (prev < 5) return prev + 1;
           return prev;
         });
-      }, 2500); // Progress every 2.5 seconds for better visibility
+      }, 7500); // Progress every 7.5 seconds for extended visibility
     } else {
       if (stepIntervalRef.current) {
         clearInterval(stepIntervalRef.current);
@@ -65,7 +65,7 @@ export default function Home() {
         }
         setIsAnimatingCompletion(false);
         setPendingResult(null);
-      }, 1500); // Show final step for 1.5 seconds
+      }, 2500); // Show final step for 2.5 seconds
 
       return () => clearTimeout(finalDelay);
     }
