@@ -26,7 +26,7 @@ InvoiceAnalysisAI/
 ---
 
 ## Live Demo
-[View Deployed App Here](https://invoice-analysis-ai.vercel.app/)
+[View Deployed App Here](https://invoice-analysis-frontend.vercel.app/)
 
 ---
 
