@@ -4,8 +4,6 @@ import { parseInvoiceData, ParsedInvoiceData } from '../utils/parseInvoice';
 import UploadForm from '../components/UploadForm';
 import InvoiceCard from '../components/InvoiceCard';
 import DecisionTrace from '../components/DecisionTrace';
-import ProjectSelector from '../components/ProjectSelector';
-import { Project, projectTypeLabels, projectTypeColors } from '../types/project';
 
 export default function Home() {
   const [invoiceData, setInvoiceData] = useState<any>(null);
@@ -17,7 +15,6 @@ export default function Home() {
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
   const [pendingResult, setPendingResult] = useState<any>(null);
   const [isAnimatingCompletion, setIsAnimatingCompletion] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const stepIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
