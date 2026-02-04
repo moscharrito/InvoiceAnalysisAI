@@ -19,39 +19,39 @@ interface DecisionTraceProps {
 const PROCESS_STEPS: Omit<ProcessStep, 'status'>[] = [
   {
     id: 'upload',
-    title: 'Document Upload',
-    description: 'Receiving and validating document',
-    details: ['File type validation', 'Size check', 'Format verification'],
+    title: 'Document Classification',
+    description: 'Validating and classifying document',
+    details: ['File type validation', 'Document type detection', 'Claim association verified'],
   },
   {
     id: 'preprocess',
-    title: 'Pre-processing',
-    description: 'Preparing document for analysis',
-    details: ['Image enhancement', 'Noise reduction', 'Orientation correction'],
+    title: 'Claim Validation',
+    description: 'Verifying claim information',
+    details: ['Policy status check', 'Coverage period validation', 'Deductible verification'],
   },
   {
     id: 'ocr',
-    title: 'OCR Extraction',
-    description: 'Extracting text using Azure AI',
-    details: ['Text recognition', 'Layout analysis', 'Table detection'],
+    title: 'Invoice Extraction',
+    description: 'Extracting contractor invoice data',
+    details: ['Vendor information', 'Line item detection', 'Amount extraction'],
   },
   {
     id: 'analysis',
-    title: 'Data Analysis',
-    description: 'Identifying invoice fields',
-    details: ['Vendor detection', 'Amount extraction', 'Date parsing'],
+    title: 'Coverage Determination',
+    description: 'Analyzing coverage applicability',
+    details: ['Covered vs non-covered items', 'Depreciation calculation', 'Deductible application'],
   },
   {
     id: 'validation',
-    title: 'Validation',
-    description: 'Verifying extracted data',
-    details: ['Field validation', 'Confidence scoring', 'Error checking'],
+    title: 'Fraud & Compliance',
+    description: 'Running validation checks',
+    details: ['Duplicate invoice check', 'Amount threshold validation', 'Date consistency check'],
   },
   {
     id: 'output',
-    title: 'Result Generation',
-    description: 'Formatting final output',
-    details: ['Data structuring', 'JSON formatting', 'Response preparation'],
+    title: 'Adjudication Recommendation',
+    description: 'Generating claim recommendation',
+    details: ['Coverage summary', 'Payment calculation', 'Action recommendation'],
   },
 ];
 
@@ -144,12 +144,12 @@ export default function DecisionTrace({ currentStep, isComplete, isError, errorM
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center">
           <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
           </svg>
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-charcoal-800">Decision Trace</h3>
-          <p className="text-charcoal-400 text-xs">AI Processing Pipeline</p>
+          <h3 className="text-lg font-semibold text-charcoal-800">Claim Processing</h3>
+          <p className="text-charcoal-400 text-xs">AI Adjudication Pipeline</p>
         </div>
       </div>
 

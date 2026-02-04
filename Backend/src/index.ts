@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import invoiceRoutes from './routes/invoice';
+import claimsRoutes from './routes/claims';
 
 dotenv.config();
 
@@ -33,11 +34,12 @@ app.use(express.json());
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Invoice Analysis API is running' });
+  res.json({ status: 'ok', message: 'ClaimScan API is running' });
 });
 
 // Routes
 app.use('/api/invoice', invoiceRoutes);
+app.use('/api/claims', claimsRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -49,7 +51,7 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 });
 
 app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
+  console.log(`ClaimScan API running on http://localhost:${PORT}`);
 });
 
 export default app;
