@@ -1,0 +1,216 @@
+// ClaimScan - Property Insurance Claim Types
+
+export interface ClaimInput {
+  claimNumber: string;
+  policyNumber: string;
+  claimantName: string;
+  propertyAddress: string;
+  dateOfLoss: string;
+  causeOfLoss: CauseOfLoss;
+}
+
+export interface Claim extends ClaimInput {
+  id: string;
+  status: ClaimStatus;
+  totalReserve: number;
+  totalPaid: number;
+  deductible: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ClaimStatus =
+  | 'open'
+  | 'pending_documentation'
+  | 'under_review'
+  | 'approved'
+  | 'partial_payment'
+  | 'closed'
+  | 'denied';
+
+export type CauseOfLoss =
+  | 'fire'
+  | 'water'
+  | 'wind'
+  | 'hail'
+  | 'theft'
+  | 'vandalism'
+  | 'lightning'
+  | 'collapse'
+  | 'other';
+
+export interface ClaimInvoice {
+  id: string;
+  claimId: string;
+  fileName: string;
+  fileSize: number;
+  uploadedAt: string;
+  vendorName: string;
+  vendorAddress?: string;
+  invoiceNumber?: string;
+  invoiceDate: string;
+  subtotal: number;
+  tax: number;
+  totalAmount: number;
+  lineItems: InvoiceLineItem[];
+  validationStatus: ValidationStatus;
+  validationFlags: ValidationFlag[];
+  recommendedAction: RecommendedAction;
+  coverageAnalysis: CoverageAnalysis;
+  rawOcrData: any;
+}
+
+export interface InvoiceLineItem {
+  description: string;
+  category: RepairCategory;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export type RepairCategory =
+  | 'roofing'
+  | 'siding'
+  | 'windows'
+  | 'doors'
+  | 'flooring'
+  | 'drywall'
+  | 'painting'
+  | 'electrical'
+  | 'plumbing'
+  | 'hvac'
+  | 'structural'
+  | 'debris_removal'
+  | 'temporary_repairs'
+  | 'general_labor'
+  | 'materials'
+  | 'other';
+
+export type ValidationStatus = 'valid' | 'needs_review' | 'flagged' | 'rejected';
+
+export interface ValidationFlag {
+  code: string;
+  severity: 'info' | 'warning' | 'error';
+  message: string;
+  field?: string;
+}
+
+export type RecommendedAction =
+  | 'auto_approve'
+  | 'approve_with_adjustment'
+  | 'manual_review'
+  | 'request_documentation'
+  | 'escalate'
+  | 'deny';
+
+export interface CoverageAnalysis {
+  coveredAmount: number;
+  nonCoveredAmount: number;
+  deductibleApplied: number;
+  depreciation: number;
+  netPayable: number;
+  coverageNotes: string[];
+}
+
+// Display Labels
+
+export const causeOfLossLabels: Record<CauseOfLoss, string> = {
+  fire: 'Fire Damage',
+  water: 'Water Damage',
+  wind: 'Wind Damage',
+  hail: 'Hail Damage',
+  theft: 'Theft',
+  vandalism: 'Vandalism',
+  lightning: 'Lightning Strike',
+  collapse: 'Structural Collapse',
+  other: 'Other',
+};
+
+export const causeOfLossIcons: Record<CauseOfLoss, string> = {
+  fire: '🔥',
+  water: '💧',
+  wind: '🌪️',
+  hail: '🧊',
+  theft: '🔓',
+  vandalism: '🔨',
+  lightning: '⚡',
+  collapse: '🏚️',
+  other: '📋',
+};
+
+export const claimStatusConfig: Record<ClaimStatus, { label: string; color: string }> = {
+  open: { label: 'Open', color: 'bg-blue-100 text-blue-700' },
+  pending_documentation: { label: 'Pending Docs', color: 'bg-yellow-100 text-yellow-700' },
+  under_review: { label: 'Under Review', color: 'bg-purple-100 text-purple-700' },
+  approved: { label: 'Approved', color: 'bg-green-100 text-green-700' },
+  partial_payment: { label: 'Partial Payment', color: 'bg-teal-100 text-teal-700' },
+  closed: { label: 'Closed', color: 'bg-gray-100 text-gray-700' },
+  denied: { label: 'Denied', color: 'bg-red-100 text-red-700' },
+};
+
+export const repairCategoryLabels: Record<RepairCategory, string> = {
+  roofing: 'Roofing',
+  siding: 'Siding & Exterior',
+  windows: 'Windows',
+  doors: 'Doors',
+  flooring: 'Flooring',
+  drywall: 'Drywall & Plaster',
+  painting: 'Painting',
+  electrical: 'Electrical',
+  plumbing: 'Plumbing',
+  hvac: 'HVAC',
+  structural: 'Structural',
+  debris_removal: 'Debris Removal',
+  temporary_repairs: 'Temporary Repairs',
+  general_labor: 'General Labor',
+  materials: 'Materials',
+  other: 'Other',
+};
+
+export const recommendedActionConfig: Record<RecommendedAction, { label: string; color: string }> = {
+  auto_approve: { label: 'Auto-Approve', color: 'bg-green-100 text-green-700 border-green-200' },
+  approve_with_adjustment: { label: 'Approve with Adjustment', color: 'bg-teal-100 text-teal-700 border-teal-200' },
+  manual_review: { label: 'Manual Review Required', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  request_documentation: { label: 'Request Documentation', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  escalate: { label: 'Escalate to Supervisor', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  deny: { label: 'Recommend Denial', color: 'bg-red-100 text-red-700 border-red-200' },
+};
+
+export const validationSeverityConfig: Record<ValidationFlag['severity'], { color: string; bgColor: string }> = {
+  info: { color: 'text-blue-600', bgColor: 'bg-blue-50' },
+  warning: { color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+  error: { color: 'text-red-600', bgColor: 'bg-red-50' },
+};
+
+// Utility Functions
+
+export const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+};
+
+export const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
+// Validation Rules (Hardcoded)
+
+export const VALIDATION_RULES = {
+  MAX_INVOICE_AMOUNT: 100000, // Flag invoices over $100k
+  MAX_LINE_ITEM_AMOUNT: 25000, // Flag single items over $25k
+  MIN_INVOICE_DATE_DAYS_AFTER_LOSS: 0, // Invoice must be on or after date of loss
+  MAX_INVOICE_DATE_DAYS_AFTER_LOSS: 365, // Invoice should be within 1 year of loss
+  SUSPICIOUS_ROUND_AMOUNT_THRESHOLD: 1000, // Flag round amounts over $1k
+  REQUIRED_FIELDS: ['vendorName', 'invoiceDate', 'totalAmount'],
+};
+
+// Default deductible for demo
+export const DEFAULT_DEDUCTIBLE = 1000;
+export const DEFAULT_DEPRECIATION_RATE = 0.1; // 10%

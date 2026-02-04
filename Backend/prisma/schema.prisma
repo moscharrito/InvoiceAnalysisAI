@@ -1,0 +1,110 @@
+// ClaimScan Database Schema
+// Property Insurance Claims Processing
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Claim {
+  id              String         @id @default(uuid())
+  claimNumber     String         @unique
+  policyNumber    String
+  claimantName    String
+  propertyAddress String
+  dateOfLoss      DateTime
+  causeOfLoss     String
+  status          ClaimStatus    @default(PENDING)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  invoices        ClaimInvoice[]
+
+  @@index([claimNumber])
+  @@index([policyNumber])
+  @@index([status])
+}
+
+model ClaimInvoice {
+  id                String              @id @default(uuid())
+  claimId           String
+  claim             Claim               @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  // File information
+  fileName          String
+  fileType          String
+  filePath          String?
+  fileSize          Int?
+
+  // Extracted vendor information
+  vendorName        String?
+  vendorAddress     String?
+  vendorPhone       String?
+
+  // Invoice details
+  invoiceNumber     String?
+  invoiceDate       DateTime?
+  dueDate           DateTime?
+  totalAmount       Float?
+  currency          String              @default("USD")
+
+  // Line items stored as JSON
+  lineItems         String?             // JSON array of line items
+
+  // OCR and processing data
+  ocrRawData        String?             // Raw OCR response
+  ocrConfidence     Float?
+
+  // Validation results
+  validationFlags   String?             // JSON array of validation flags
+  validationStatus  ValidationStatus    @default(PENDING)
+
+  // Coverage analysis
+  coverageAnalysis  String?             // JSON object with coverage details
+  coveredAmount     Float?
+  nonCoveredAmount  Float?
+  depreciation      Float?
+  deductible        Float?
+  recommendedPayout Float?
+
+  // Adjudication
+  adjudicationStatus AdjudicationStatus @default(PENDING)
+  adjudicationNotes  String?
+
+  // Timestamps
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  processedAt       DateTime?
+
+  @@index([claimId])
+  @@index([validationStatus])
+  @@index([adjudicationStatus])
+}
+
+enum ClaimStatus {
+  PENDING
+  IN_PROGRESS
+  UNDER_REVIEW
+  APPROVED
+  DENIED
+  CLOSED
+}
+
+enum ValidationStatus {
+  PENDING
+  PASSED
+  FLAGGED
+  FAILED
+}
+
+enum AdjudicationStatus {
+  PENDING
+  RECOMMENDED_APPROVE
+  RECOMMENDED_DENY
+  RECOMMENDED_REVIEW
+  APPROVED
+  DENIED
+}

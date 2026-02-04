@@ -6,15 +6,15 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        <title>Invoice Intelligence | AI-Powered Document Analysis</title>
-        <meta name="description" content="Transform invoices into structured data with Azure AI. Extract vendor details, line items, and totals instantly." />
+        <title>ClaimScan | Property Insurance Claims Processing</title>
+        <meta name="description" content="Streamline property insurance claim adjudication with AI-powered contractor invoice processing. Automate coverage validation and fraud detection." />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta name="theme-color" content="#fefefe" />
         <link rel="icon" href="/favicon.ico" />
 
         {/* Open Graph */}
-        <meta property="og:title" content="Invoice Intelligence | AI-Powered Analysis" />
-        <meta property="og:description" content="Transform invoices into structured data with Azure AI" />
+        <meta property="og:title" content="ClaimScan | Property Insurance Claims Processing" />
+        <meta property="og:description" content="AI-powered property insurance claim adjudication and invoice processing" />
         <meta property="og:type" content="website" />
 
         {/* Preconnect to Google Fonts */}
