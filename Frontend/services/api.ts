@@ -86,7 +86,12 @@ export const checkHealth = async (): Promise<{ status: string; message: string }
 
 // Claims API
 
-export const createClaim = async (claim: ClaimInput): Promise<ClaimResponse> => {
+export const generateClaimNumber = async (): Promise<string> => {
+  const response = await apiClient.get<{ success: boolean; claimNumber: string }>('/claims/generate-number');
+  return response.data.claimNumber;
+};
+
+export const createClaim = async (claim: Omit<ClaimInput, 'claimNumber'>): Promise<ClaimResponse> => {
   const response = await apiClient.post<ClaimResponse>('/claims', claim);
 
   if (!response.data.success) {

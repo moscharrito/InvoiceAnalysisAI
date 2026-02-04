@@ -14,9 +14,10 @@ import {
   calculateCoverageAndRecommendation,
   getInvoiceById,
   getInvoicesByClaim,
+  generateClaimNumber,
   ClaimInput,
+  ClaimStatus,
 } from '../services/claimService';
-import { ClaimStatus } from '@prisma/client';
 
 const router = Router();
 
@@ -37,27 +38,46 @@ const upload = multer({
   },
 });
 
+// GET /api/claims/generate-number - Generate a new claim number
+router.get('/generate-number', async (req: Request, res: Response) => {
+  try {
+    const claimNumber = await generateClaimNumber();
+    return res.json({
+      success: true,
+      claimNumber,
+    });
+  } catch (error) {
+    console.error('Generate claim number error:', error);
+    return res.status(500).json({
+      error: 'Failed to generate claim number',
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 // POST /api/claims - Create a new claim
 router.post('/', async (req: Request, res: Response) => {
   try {
     const input: ClaimInput = req.body;
 
-    // Validate required fields
-    if (!input.claimNumber || !input.policyNumber || !input.claimantName ||
+    // Validate required fields (claimNumber is now optional - will be auto-generated)
+    if (!input.policyNumber || !input.claimantName ||
         !input.propertyAddress || !input.dateOfLoss || !input.causeOfLoss) {
       return res.status(400).json({
         error: 'Missing required fields',
-        required: ['claimNumber', 'policyNumber', 'claimantName', 'propertyAddress', 'dateOfLoss', 'causeOfLoss'],
+        required: ['policyNumber', 'claimantName', 'propertyAddress', 'dateOfLoss', 'causeOfLoss'],
       });
     }
 
-    // Check if claim number already exists
-    const existing = await getClaimByNumber(input.claimNumber);
-    if (existing) {
-      return res.status(409).json({
-        error: 'Claim number already exists',
-        claimId: existing.id,
-      });
+    // Check if claim number already exists (only if provided)
+    if (input.claimNumber) {
+      const existing = await getClaimByNumber(input.claimNumber);
+      if (existing) {
+        return res.status(409).json({
+          error: 'Claim number already exists',
+          claimId: existing.id,
+        });
+      }
     }
 
     const claim = await createClaim(input);

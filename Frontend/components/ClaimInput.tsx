@@ -2,13 +2,12 @@ import React, { useState } from 'react';
 import { ClaimInput as ClaimInputType, CauseOfLoss, causeOfLossLabels, causeOfLossIcons } from '../types/claim';
 
 interface ClaimInputProps {
-  onSubmit: (claim: ClaimInputType) => void;
+  onSubmit: (claim: Omit<ClaimInputType, 'claimNumber'>) => void;
   isLoading?: boolean;
 }
 
 export default function ClaimInput({ onSubmit, isLoading = false }: ClaimInputProps) {
-  const [formData, setFormData] = useState<ClaimInputType>({
-    claimNumber: '',
+  const [formData, setFormData] = useState<Omit<ClaimInputType, 'claimNumber'>>({
     policyNumber: '',
     claimantName: '',
     propertyAddress: '',
@@ -16,16 +15,10 @@ export default function ClaimInput({ onSubmit, isLoading = false }: ClaimInputPr
     causeOfLoss: 'water',
   });
 
-  const [errors, setErrors] = useState<Partial<Record<keyof ClaimInputType, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof Omit<ClaimInputType, 'claimNumber'>, string>>>({});
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<Record<keyof ClaimInputType, string>> = {};
-
-    if (!formData.claimNumber.trim()) {
-      newErrors.claimNumber = 'Claim number is required';
-    } else if (!/^[A-Z0-9-]{5,20}$/i.test(formData.claimNumber.trim())) {
-      newErrors.claimNumber = 'Invalid claim number format';
-    }
+    const newErrors: Partial<Record<keyof Omit<ClaimInputType, 'claimNumber'>, string>> = {};
 
     if (!formData.policyNumber.trim()) {
       newErrors.policyNumber = 'Policy number is required';
@@ -60,7 +53,7 @@ export default function ClaimInput({ onSubmit, isLoading = false }: ClaimInputPr
     }
   };
 
-  const handleChange = (field: keyof ClaimInputType, value: string) => {
+  const handleChange = (field: keyof Omit<ClaimInputType, 'claimNumber'>, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -73,61 +66,43 @@ export default function ClaimInput({ onSubmit, isLoading = false }: ClaimInputPr
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Claim & Policy Numbers - Side by Side */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Claim Number */}
-        <div>
-          <label className="block text-sm font-medium text-charcoal-700 mb-1.5">
-            Claim Number <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="w-4 h-4 text-charcoal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              value={formData.claimNumber}
-              onChange={(e) => handleChange('claimNumber', e.target.value.toUpperCase())}
-              placeholder="CLM-2024-001234"
-              className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${
-                errors.claimNumber ? 'border-red-300 bg-red-50' : 'border-charcoal-200'
-              } focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all`}
-              disabled={isLoading}
-            />
-          </div>
-          {errors.claimNumber && (
-            <p className="mt-1 text-xs text-red-500">{errors.claimNumber}</p>
-          )}
+      {/* Info Banner - Claim number auto-generated */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+          <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
         </div>
+        <p className="text-sm text-amber-700">
+          A unique claim number will be <strong>automatically generated</strong> when you submit.
+        </p>
+      </div>
 
-        {/* Policy Number */}
-        <div>
-          <label className="block text-sm font-medium text-charcoal-700 mb-1.5">
-            Policy Number <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="w-4 h-4 text-charcoal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              value={formData.policyNumber}
-              onChange={(e) => handleChange('policyNumber', e.target.value.toUpperCase())}
-              placeholder="HO-12345678"
-              className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${
-                errors.policyNumber ? 'border-red-300 bg-red-50' : 'border-charcoal-200'
-              } focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all`}
-              disabled={isLoading}
-            />
+      {/* Policy Number */}
+      <div>
+        <label className="block text-sm font-medium text-charcoal-700 mb-1.5">
+          Policy Number <span className="text-red-500">*</span>
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="w-4 h-4 text-charcoal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
           </div>
-          {errors.policyNumber && (
-            <p className="mt-1 text-xs text-red-500">{errors.policyNumber}</p>
-          )}
+          <input
+            type="text"
+            value={formData.policyNumber}
+            onChange={(e) => handleChange('policyNumber', e.target.value.toUpperCase())}
+            placeholder="HO-12345678"
+            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${
+              errors.policyNumber ? 'border-red-300 bg-red-50' : 'border-charcoal-200'
+            } focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all`}
+            disabled={isLoading}
+          />
         </div>
+        {errors.policyNumber && (
+          <p className="mt-1 text-xs text-red-500">{errors.policyNumber}</p>
+        )}
       </div>
 
       {/* Claimant Name */}
@@ -262,14 +237,14 @@ export default function ClaimInput({ onSubmit, isLoading = false }: ClaimInputPr
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
-            Processing...
+            Creating Claim...
           </span>
         ) : (
           <span className="flex items-center justify-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            Continue to Invoice Upload
+            Create Claim & Continue
           </span>
         )}
       </button>
