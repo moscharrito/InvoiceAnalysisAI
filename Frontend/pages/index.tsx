@@ -175,8 +175,11 @@ export default function Home() {
     setClaimData(null);
     setInvoiceData(null);
     setParsedData(null);
+    setCoverageData(null);
+    setValidationFlags([]);
     setError('');
     setIsLoading(false);
+    setIsClaimLoading(false);
     setCurrentStep(0);
     setUploadedFileName('');
   };
@@ -184,6 +187,8 @@ export default function Home() {
   const resetToUpload = () => {
     setInvoiceData(null);
     setParsedData(null);
+    setCoverageData(null);
+    setValidationFlags([]);
     setError('');
     setIsLoading(false);
     setCurrentStep(0);
@@ -291,7 +296,14 @@ export default function Home() {
                   </p>
 
                   {/* Claim Input Form */}
-                  <ClaimInput onSubmit={handleClaimSubmit} />
+                  <ClaimInput onSubmit={handleClaimSubmit} isLoading={isClaimLoading} />
+
+                  {/* Error Message */}
+                  {error && appPhase === 'claim_entry' && (
+                    <div className="mt-4 p-3 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm">
+                      {error}
+                    </div>
+                  )}
                 </div>
 
                 {/* Feature Cards */}
@@ -664,22 +676,149 @@ export default function Home() {
                 </div>
               )}
 
+              {/* Coverage Summary - if available */}
+              {coverageData && (
+                <div className="max-w-4xl mx-auto">
+                  <h4 className="text-lg font-semibold text-charcoal-700 mb-4 text-center">Coverage Analysis</h4>
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                    {[
+                      { label: 'Covered', value: `$${coverageData.coveredAmount?.toLocaleString() || '0'}`, color: 'green' },
+                      { label: 'Non-Covered', value: `$${coverageData.nonCoveredAmount?.toLocaleString() || '0'}`, color: 'red' },
+                      { label: 'Depreciation', value: `-$${coverageData.depreciation?.toLocaleString() || '0'}`, color: 'amber' },
+                      { label: 'Deductible', value: `-$${coverageData.deductible?.toLocaleString() || '0'}`, color: 'blue' },
+                      { label: 'Recommended Payout', value: `$${coverageData.recommendedPayout?.toLocaleString() || '0'}`, color: 'green', highlight: true },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className={`glass-card p-3 text-center ${item.highlight ? 'border-green-300 bg-green-50/50 col-span-2 lg:col-span-1' : ''}`}
+                      >
+                        <div className={`text-xs uppercase tracking-wider mb-1 text-${item.color}-600`}>{item.label}</div>
+                        <div className={`font-semibold ${item.highlight ? 'text-lg text-green-700' : 'text-charcoal-800'}`}>
+                          {item.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Validation Flags - if any warnings/errors */}
+              {validationFlags.length > 0 && (
+                <div className="max-w-4xl mx-auto">
+                  <h4 className="text-lg font-semibold text-charcoal-700 mb-4 text-center">Validation Flags</h4>
+                  <div className="space-y-2">
+                    {validationFlags.map((flag, index) => (
+                      <div
+                        key={index}
+                        className={`glass-card p-3 flex items-center gap-3 ${
+                          flag.severity === 'error' ? 'border-red-200 bg-red-50/50' :
+                          flag.severity === 'warning' ? 'border-amber-200 bg-amber-50/50' :
+                          'border-blue-200 bg-blue-50/50'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                          flag.severity === 'error' ? 'bg-red-100' :
+                          flag.severity === 'warning' ? 'bg-amber-100' : 'bg-blue-100'
+                        }`}>
+                          {flag.severity === 'error' ? (
+                            <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          ) : flag.severity === 'warning' ? (
+                            <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          )}
+                        </div>
+                        <div>
+                          <p className={`text-sm font-medium ${
+                            flag.severity === 'error' ? 'text-red-700' :
+                            flag.severity === 'warning' ? 'text-amber-700' : 'text-blue-700'
+                          }`}>{flag.message}</p>
+                          <p className="text-xs text-charcoal-500">{flag.code} {flag.field && `• Field: ${flag.field}`}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Recommendation Badge */}
               <div className="max-w-4xl mx-auto">
-                <div className="glass-card p-4 border border-green-200 bg-green-50/50 flex items-center justify-between">
+                <div className={`glass-card p-4 flex items-center justify-between ${
+                  validationFlags.some(f => f.severity === 'error')
+                    ? 'border-red-200 bg-red-50/50'
+                    : validationFlags.some(f => f.severity === 'warning')
+                    ? 'border-amber-200 bg-amber-50/50'
+                    : 'border-green-200 bg-green-50/50'
+                }`}>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      validationFlags.some(f => f.severity === 'error')
+                        ? 'bg-red-100'
+                        : validationFlags.some(f => f.severity === 'warning')
+                        ? 'bg-amber-100'
+                        : 'bg-green-100'
+                    }`}>
+                      {validationFlags.some(f => f.severity === 'error') ? (
+                        <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      ) : validationFlags.some(f => f.severity === 'warning') ? (
+                        <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-green-700">Recommended: Approve for Payment</p>
-                      <p className="text-xs text-green-600">All validation checks passed • No flags detected</p>
+                      <p className={`text-sm font-semibold ${
+                        validationFlags.some(f => f.severity === 'error')
+                          ? 'text-red-700'
+                          : validationFlags.some(f => f.severity === 'warning')
+                          ? 'text-amber-700'
+                          : 'text-green-700'
+                      }`}>
+                        {validationFlags.some(f => f.severity === 'error')
+                          ? 'Recommended: Manual Review Required'
+                          : validationFlags.some(f => f.severity === 'warning')
+                          ? 'Recommended: Review Before Approval'
+                          : 'Recommended: Approve for Payment'}
+                      </p>
+                      <p className={`text-xs ${
+                        validationFlags.some(f => f.severity === 'error')
+                          ? 'text-red-600'
+                          : validationFlags.some(f => f.severity === 'warning')
+                          ? 'text-amber-600'
+                          : 'text-green-600'
+                      }`}>
+                        {validationFlags.some(f => f.severity === 'error')
+                          ? `${validationFlags.filter(f => f.severity === 'error').length} error(s) require attention`
+                          : validationFlags.some(f => f.severity === 'warning')
+                          ? `${validationFlags.filter(f => f.severity === 'warning').length} warning(s) flagged`
+                          : 'All validation checks passed • No flags detected'}
+                      </p>
                     </div>
                   </div>
-                  <span className="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700 border border-green-200">
-                    Auto-Approve
+                  <span className={`px-3 py-1 text-xs font-medium rounded-full border ${
+                    validationFlags.some(f => f.severity === 'error')
+                      ? 'bg-red-100 text-red-700 border-red-200'
+                      : validationFlags.some(f => f.severity === 'warning')
+                      ? 'bg-amber-100 text-amber-700 border-amber-200'
+                      : 'bg-green-100 text-green-700 border-green-200'
+                  }`}>
+                    {validationFlags.some(f => f.severity === 'error')
+                      ? 'Manual Review'
+                      : validationFlags.some(f => f.severity === 'warning')
+                      ? 'Review Required'
+                      : 'Auto-Approve'}
                   </span>
                 </div>
               </div>
