@@ -106,11 +106,81 @@ export type RecommendedAction =
 export interface CoverageAnalysis {
   coveredAmount: number;
   nonCoveredAmount: number;
-  deductibleApplied: number;
+  deductible: number;
+  deductibleApplied?: number;
   depreciation: number;
   netPayable: number;
   coverageNotes: string[];
 }
+
+// LLM Analysis Types
+
+export interface LineItemAssessment {
+  description: string;
+  invoicedAmount: number;
+  assessedAmount: number;
+  category: RepairCategory | string;
+  isCovered: boolean;
+  reasoning: string;
+}
+
+export interface DamageAssessment {
+  observedDamageTypes: string[];
+  severityLevel: SeverityLevel;
+  consistentWithCause: boolean;
+  consistencyNotes: string;
+  additionalObservations: string[];
+}
+
+export type SeverityLevel = 'minor' | 'moderate' | 'severe' | 'catastrophic';
+
+export interface DepreciationAnalysis {
+  rate: number;
+  method: string;
+  reasoning: string;
+}
+
+export interface LLMClaimAnalysis {
+  coverageAnalysis: CoverageAnalysis;
+  lineItemAssessments: LineItemAssessment[];
+  validationFlags: ValidationFlag[];
+  damageAssessment: DamageAssessment;
+  recommendedAction: RecommendedAction;
+  depreciationAnalysis: DepreciationAnalysis;
+  adjusterNarrative: string;
+  confidenceScore: number;
+}
+
+export interface ClaimEvidence {
+  id: string;
+  claimId: string;
+  fileName: string;
+  fileType: string;
+  filePath?: string;
+  fileSize?: number;
+  evidenceType: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DocumentUploadResponse {
+  success: boolean;
+  data: {
+    claim: any;
+    invoices: any[];
+    evidence: ClaimEvidence[];
+    ocrResults: any[];
+    llmAnalysis: LLMClaimAnalysis;
+  };
+}
+
+export const severityLevelConfig: Record<SeverityLevel, { label: string; color: string }> = {
+  minor: { label: 'Minor', color: 'bg-green-100 text-green-700 border-green-200' },
+  moderate: { label: 'Moderate', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  severe: { label: 'Severe', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  catastrophic: { label: 'Catastrophic', color: 'bg-red-100 text-red-700 border-red-200' },
+};
 
 // Display Labels
 

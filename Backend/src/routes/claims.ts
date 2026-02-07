@@ -11,13 +11,18 @@ import {
   updateInvoiceWithOCR,
   validateInvoice,
   updateInvoiceValidation,
-  calculateCoverageAndRecommendation,
   getInvoiceById,
   getInvoicesByClaim,
   generateClaimNumber,
+  createClaimEvidence,
+  getEvidenceByClaim,
+  updateClaimWithLLMAnalysis,
+  updateInvoiceWithLLMAnalysis,
   ClaimInput,
   ClaimStatus,
 } from '../services/claimService';
+import { analyzeClaimWithLLM } from '../services/claimAnalysis';
+import { storeEvidenceImage, getEvidenceImagesAsBase64 } from '../services/imageStorage';
 
 const router = Router();
 
@@ -165,12 +170,262 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/claims/:id/invoices - Upload and process invoice for a claim
+// POST /api/claims/:id/documents - Upload invoices and evidence, then run LLM analysis
+router.post(
+  '/:id/documents',
+  upload.fields([
+    { name: 'invoices', maxCount: 5 },
+    { name: 'evidence', maxCount: 10 },
+  ]),
+  async (req: Request, res: Response) => {
+    try {
+      const claimId = req.params.id;
+
+      const claim = await getClaimById(claimId);
+      if (!claim) {
+        return res.status(404).json({ error: 'Claim not found' });
+      }
+
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+      const invoiceFiles = files?.invoices || [];
+      const evidenceFiles = files?.evidence || [];
+
+      if (invoiceFiles.length === 0 && evidenceFiles.length === 0) {
+        return res.status(400).json({ error: 'No files uploaded' });
+      }
+
+      await updateClaimStatus(claimId, ClaimStatus.IN_PROGRESS);
+
+      // Process invoice files with OCR
+      const processedInvoices = [];
+      const ocrResults = [];
+
+      for (const file of invoiceFiles) {
+        const invoice = await createClaimInvoice(claimId, {
+          fileName: file.originalname,
+          fileType: file.mimetype,
+          fileSize: file.size,
+        });
+
+        const ocrResult = await analyzeInvoice(file.buffer, file.mimetype);
+
+        await updateInvoiceWithOCR(invoice.id, {
+          vendorName: ocrResult.vendorName,
+          vendorAddress: ocrResult.vendorAddress,
+          invoiceNumber: ocrResult.invoiceNumber,
+          invoiceDate: ocrResult.invoiceDate,
+          dueDate: ocrResult.dueDate,
+          totalAmount: ocrResult.totalAmount,
+          currency: ocrResult.currency || 'USD',
+          lineItems: ocrResult.lineItems,
+          ocrRawData: JSON.stringify(ocrResult),
+          ocrConfidence: ocrResult.confidence,
+        });
+
+        // Run basic validation
+        const updatedInvoice = await getInvoiceById(invoice.id);
+        if (updatedInvoice) {
+          const flags = validateInvoice(
+            {
+              invoiceDate: updatedInvoice.invoiceDate,
+              totalAmount: updatedInvoice.totalAmount,
+              lineItems: updatedInvoice.lineItems,
+              vendorName: updatedInvoice.vendorName,
+            },
+            claim.dateOfLoss
+          );
+          await updateInvoiceValidation(invoice.id, flags);
+        }
+
+        processedInvoices.push(invoice);
+        ocrResults.push({
+          invoiceId: invoice.id,
+          ...ocrResult,
+        });
+      }
+
+      // Store evidence images
+      for (const file of evidenceFiles) {
+        await storeEvidenceImage(claimId, file.buffer, file.originalname, file.mimetype);
+      }
+
+      // Prepare data for LLM analysis
+      const invoiceDataForLLM = ocrResults.map(ocr => ({
+        vendorName: ocr.vendorName,
+        vendorAddress: ocr.vendorAddress,
+        invoiceNumber: ocr.invoiceNumber,
+        invoiceDate: ocr.invoiceDate,
+        totalAmount: ocr.totalAmount,
+        lineItems: ocr.lineItems?.map((item: any) => ({
+          description: item.description,
+          amount: item.amount,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
+      }));
+
+      // Get evidence images as base64 for LLM
+      const evidenceImages = await getEvidenceImagesAsBase64(claimId);
+
+      // Run LLM analysis
+      const llmAnalysis = await analyzeClaimWithLLM(
+        {
+          claimNumber: claim.claimNumber,
+          policyNumber: claim.policyNumber,
+          claimantName: claim.claimantName,
+          propertyAddress: claim.propertyAddress,
+          dateOfLoss: claim.dateOfLoss.toISOString().split('T')[0],
+          causeOfLoss: claim.causeOfLoss,
+        },
+        invoiceDataForLLM,
+        evidenceImages
+      );
+
+      // Store LLM results on claim
+      await updateClaimWithLLMAnalysis(claimId, llmAnalysis);
+
+      // Store LLM results on each invoice
+      for (const invoice of processedInvoices) {
+        await updateInvoiceWithLLMAnalysis(invoice.id, llmAnalysis);
+      }
+
+      // Get final state
+      const finalClaim = await getClaimById(claimId);
+      const finalInvoices = await getInvoicesByClaim(claimId);
+      const evidence = await getEvidenceByClaim(claimId);
+
+      return res.json({
+        success: true,
+        data: {
+          claim: finalClaim,
+          invoices: finalInvoices,
+          evidence,
+          ocrResults,
+          llmAnalysis,
+        },
+      });
+    } catch (error) {
+      console.error('Document processing error:', error);
+      return res.status(500).json({
+        error: 'Failed to process documents',
+        detail: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+// POST /api/claims/:id/evidence - Upload evidence photos separately
+router.post(
+  '/:id/evidence',
+  upload.array('evidence', 10),
+  async (req: Request, res: Response) => {
+    try {
+      const claimId = req.params.id;
+
+      const claim = await getClaimById(claimId);
+      if (!claim) {
+        return res.status(404).json({ error: 'Claim not found' });
+      }
+
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        return res.status(400).json({ error: 'No files uploaded' });
+      }
+
+      const evidenceRecords = [];
+      for (const file of files) {
+        const record = await storeEvidenceImage(claimId, file.buffer, file.originalname, file.mimetype);
+        evidenceRecords.push(record);
+      }
+
+      return res.json({
+        success: true,
+        data: evidenceRecords,
+      });
+    } catch (error) {
+      console.error('Evidence upload error:', error);
+      return res.status(500).json({
+        error: 'Failed to upload evidence',
+        detail: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+// POST /api/claims/:id/analyze - Re-trigger LLM analysis
+router.post('/:id/analyze', async (req: Request, res: Response) => {
+  try {
+    const claimId = req.params.id;
+
+    const claim = await getClaimById(claimId);
+    if (!claim) {
+      return res.status(404).json({ error: 'Claim not found' });
+    }
+
+    const invoices = await getInvoicesByClaim(claimId);
+    if (invoices.length === 0) {
+      return res.status(400).json({ error: 'No invoices found for this claim. Upload invoices first.' });
+    }
+
+    // Build invoice data from stored OCR results
+    const invoiceDataForLLM = invoices.map(inv => ({
+      vendorName: inv.vendorName || undefined,
+      vendorAddress: inv.vendorAddress || undefined,
+      invoiceNumber: inv.invoiceNumber || undefined,
+      invoiceDate: inv.invoiceDate?.toISOString().split('T')[0],
+      totalAmount: inv.totalAmount || undefined,
+      lineItems: inv.lineItems ? JSON.parse(inv.lineItems).map((item: any) => ({
+        description: item.description,
+        amount: item.amount,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      })) : undefined,
+    }));
+
+    const evidenceImages = await getEvidenceImagesAsBase64(claimId);
+
+    const llmAnalysis = await analyzeClaimWithLLM(
+      {
+        claimNumber: claim.claimNumber,
+        policyNumber: claim.policyNumber,
+        claimantName: claim.claimantName,
+        propertyAddress: claim.propertyAddress,
+        dateOfLoss: claim.dateOfLoss.toISOString().split('T')[0],
+        causeOfLoss: claim.causeOfLoss,
+      },
+      invoiceDataForLLM,
+      evidenceImages
+    );
+
+    await updateClaimWithLLMAnalysis(claimId, llmAnalysis);
+
+    for (const invoice of invoices) {
+      await updateInvoiceWithLLMAnalysis(invoice.id, llmAnalysis);
+    }
+
+    const finalClaim = await getClaimById(claimId);
+
+    return res.json({
+      success: true,
+      data: {
+        claim: finalClaim,
+        llmAnalysis,
+      },
+    });
+  } catch (error) {
+    console.error('Re-analysis error:', error);
+    return res.status(500).json({
+      error: 'Failed to re-analyze claim',
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// POST /api/claims/:id/invoices - Upload and process single invoice (legacy support)
 router.post('/:id/invoices', upload.single('file'), async (req: Request, res: Response) => {
   try {
     const claimId = req.params.id;
 
-    // Get the claim
     const claim = await getClaimById(claimId);
     if (!claim) {
       return res.status(404).json({ error: 'Claim not found' });
@@ -182,20 +437,16 @@ router.post('/:id/invoices', upload.single('file'), async (req: Request, res: Re
 
     const file = req.file;
 
-    // Update claim status to in progress
     await updateClaimStatus(claimId, ClaimStatus.IN_PROGRESS);
 
-    // Create invoice record
     const invoice = await createClaimInvoice(claimId, {
       fileName: file.originalname,
       fileType: file.mimetype,
       fileSize: file.size,
     });
 
-    // Process with Azure OCR
     const ocrResult = await analyzeInvoice(file.buffer, file.mimetype);
 
-    // Update invoice with OCR results
     await updateInvoiceWithOCR(invoice.id, {
       vendorName: ocrResult.vendorName,
       vendorAddress: ocrResult.vendorAddress,
@@ -209,13 +460,11 @@ router.post('/:id/invoices', upload.single('file'), async (req: Request, res: Re
       ocrConfidence: ocrResult.confidence,
     });
 
-    // Get updated invoice
     const updatedInvoice = await getInvoiceById(invoice.id);
     if (!updatedInvoice) {
       throw new Error('Invoice not found after update');
     }
 
-    // Validate invoice against claim
     const validationFlags = validateInvoice(
       {
         invoiceDate: updatedInvoice.invoiceDate,
@@ -228,27 +477,6 @@ router.post('/:id/invoices', upload.single('file'), async (req: Request, res: Re
 
     await updateInvoiceValidation(invoice.id, validationFlags);
 
-    // Calculate coverage (simplified - in production this would be more complex)
-    const totalAmount = updatedInvoice.totalAmount || 0;
-    const coveredAmount = totalAmount * 0.85; // Assume 85% covered
-    const nonCoveredAmount = totalAmount * 0.15;
-    const depreciation = coveredAmount * 0.1; // 10% depreciation
-    const deductible = 1000; // Example deductible
-
-    await calculateCoverageAndRecommendation(invoice.id, {
-      coveredAmount,
-      nonCoveredAmount,
-      depreciation,
-      deductible,
-      coverageDetails: {
-        coveredItems: ocrResult.lineItems?.slice(0, Math.ceil((ocrResult.lineItems?.length || 0) * 0.85)),
-        nonCoveredItems: ocrResult.lineItems?.slice(Math.ceil((ocrResult.lineItems?.length || 0) * 0.85)),
-        depreciationRate: 0.1,
-        policyDeductible: deductible,
-      },
-    });
-
-    // Get final invoice state
     const finalInvoice = await getInvoiceById(invoice.id);
 
     return res.json({
@@ -257,16 +485,7 @@ router.post('/:id/invoices', upload.single('file'), async (req: Request, res: Re
         invoice: finalInvoice,
         ocrResult,
         validationFlags,
-        coverage: {
-          coveredAmount,
-          nonCoveredAmount,
-          depreciation,
-          deductible,
-          recommendedPayout: finalInvoice?.recommendedPayout,
-        },
       },
-      fileName: file.originalname,
-      fileSize: file.size,
     });
   } catch (error) {
     console.error('Invoice processing error:', error);

@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma';
+import type { LLMClaimAnalysis } from './claimAnalysis';
 
 // Status constants (SQLite doesn't support enums)
 export const ClaimStatus = {
@@ -100,7 +101,7 @@ export async function createClaim(input: ClaimInput) {
 export async function getClaimById(id: string) {
   return prisma.claim.findUnique({
     where: { id },
-    include: { invoices: true },
+    include: { invoices: true, evidence: true },
   });
 }
 
@@ -389,5 +390,99 @@ export async function getInvoicesByClaim(claimId: string) {
   return prisma.claimInvoice.findMany({
     where: { claimId },
     orderBy: { createdAt: 'desc' },
+  });
+}
+
+// Create evidence record for a claim
+export async function createClaimEvidence(
+  claimId: string,
+  fileInfo: {
+    fileName: string;
+    fileType: string;
+    filePath?: string;
+    fileSize?: number;
+    evidenceType?: string;
+    description?: string;
+  }
+) {
+  return prisma.claimEvidence.create({
+    data: {
+      claimId,
+      fileName: fileInfo.fileName,
+      fileType: fileInfo.fileType,
+      filePath: fileInfo.filePath,
+      fileSize: fileInfo.fileSize,
+      evidenceType: fileInfo.evidenceType || 'damage_photo',
+      description: fileInfo.description,
+    },
+  });
+}
+
+// Get all evidence for a claim
+export async function getEvidenceByClaim(claimId: string) {
+  return prisma.claimEvidence.findMany({
+    where: { claimId },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+// Update claim with LLM analysis results
+export async function updateClaimWithLLMAnalysis(
+  claimId: string,
+  analysis: LLMClaimAnalysis
+) {
+  return prisma.claim.update({
+    where: { id: claimId },
+    data: {
+      llmAnalysis: JSON.stringify(analysis),
+      llmAnalyzedAt: new Date(),
+      llmConfidence: analysis.confidenceScore,
+      adjusterNarrative: analysis.adjusterNarrative,
+      damageAssessment: JSON.stringify(analysis.damageAssessment),
+      status: ClaimStatus.UNDER_REVIEW,
+    },
+  });
+}
+
+// Update invoice with LLM analysis results
+export async function updateInvoiceWithLLMAnalysis(
+  invoiceId: string,
+  analysis: LLMClaimAnalysis
+) {
+  const coverage = analysis.coverageAnalysis;
+  const recommendedPayout = coverage.netPayable;
+
+  // Map LLM recommended action to adjudication status
+  let adjudicationStatus: string;
+  switch (analysis.recommendedAction) {
+    case 'auto_approve':
+    case 'approve_with_adjustment':
+      adjudicationStatus = AdjudicationStatus.RECOMMENDED_APPROVE;
+      break;
+    case 'deny':
+      adjudicationStatus = AdjudicationStatus.RECOMMENDED_DENY;
+      break;
+    default:
+      adjudicationStatus = AdjudicationStatus.RECOMMENDED_REVIEW;
+  }
+
+  return prisma.claimInvoice.update({
+    where: { id: invoiceId },
+    data: {
+      coverageAnalysis: JSON.stringify(coverage),
+      coveredAmount: coverage.coveredAmount,
+      nonCoveredAmount: coverage.nonCoveredAmount,
+      depreciation: coverage.depreciation,
+      deductible: coverage.deductible,
+      recommendedPayout,
+      lineItemAssessments: JSON.stringify(analysis.lineItemAssessments),
+      validationFlags: JSON.stringify(analysis.validationFlags),
+      validationStatus: analysis.validationFlags.some(f => f.severity === 'error')
+        ? ValidationStatus.FAILED
+        : analysis.validationFlags.some(f => f.severity === 'warning')
+          ? ValidationStatus.FLAGGED
+          : ValidationStatus.PASSED,
+      adjudicationStatus,
+    },
   });
 }

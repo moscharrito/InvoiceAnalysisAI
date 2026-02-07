@@ -6,22 +6,30 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Claim {
-  id              String         @id @default(uuid())
-  claimNumber     String         @unique
+  id              String          @id @default(uuid())
+  claimNumber     String          @unique
   policyNumber    String
   claimantName    String
   propertyAddress String
   dateOfLoss      DateTime
   causeOfLoss     String
-  status          String         @default("PENDING")
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  status          String          @default("PENDING")
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   invoices        ClaimInvoice[]
+  evidence        ClaimEvidence[]
+
+  // LLM Analysis Results
+  llmAnalysis       String?
+  llmAnalyzedAt     DateTime?
+  llmConfidence     Float?
+  adjusterNarrative String?
+  damageAssessment  String?
 
   @@index([claimNumber])
   @@index([policyNumber])
@@ -70,6 +78,9 @@ model ClaimInvoice {
   deductible        Float?
   recommendedPayout Float?
 
+  // LLM line item assessments
+  lineItemAssessments String?
+
   // Adjudication
   adjudicationStatus String   @default("PENDING")
   adjudicationNotes  String?
@@ -82,4 +93,22 @@ model ClaimInvoice {
   @@index([claimId])
   @@index([validationStatus])
   @@index([adjudicationStatus])
+}
+
+model ClaimEvidence {
+  id              String    @id @default(uuid())
+  claimId         String
+  claim           Claim     @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  fileName        String
+  fileType        String
+  filePath        String?
+  fileSize        Int?
+  evidenceType    String    @default("damage_photo")
+  description     String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([claimId])
 }
