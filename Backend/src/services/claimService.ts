@@ -1,5 +1,31 @@
 import prisma from '../lib/prisma';
-import { ClaimStatus, ValidationStatus, AdjudicationStatus } from '@prisma/client';
+import type { LLMClaimAnalysis } from './claimAnalysis';
+
+// Status constants (SQLite doesn't support enums)
+export const ClaimStatus = {
+  PENDING: 'PENDING',
+  IN_PROGRESS: 'IN_PROGRESS',
+  UNDER_REVIEW: 'UNDER_REVIEW',
+  APPROVED: 'APPROVED',
+  DENIED: 'DENIED',
+  CLOSED: 'CLOSED',
+} as const;
+
+export const ValidationStatus = {
+  PENDING: 'PENDING',
+  PASSED: 'PASSED',
+  FLAGGED: 'FLAGGED',
+  FAILED: 'FAILED',
+} as const;
+
+export const AdjudicationStatus = {
+  PENDING: 'PENDING',
+  RECOMMENDED_APPROVE: 'RECOMMENDED_APPROVE',
+  RECOMMENDED_DENY: 'RECOMMENDED_DENY',
+  RECOMMENDED_REVIEW: 'RECOMMENDED_REVIEW',
+  APPROVED: 'APPROVED',
+  DENIED: 'DENIED',
+} as const;
 
 // Validation rules (matching frontend)
 export const VALIDATION_RULES = {
@@ -12,7 +38,7 @@ export const VALIDATION_RULES = {
 };
 
 export interface ClaimInput {
-  claimNumber: string;
+  claimNumber?: string; // Now optional - will be auto-generated
   policyNumber: string;
   claimantName: string;
   propertyAddress: string;
@@ -27,11 +53,40 @@ export interface ValidationFlag {
   field?: string;
 }
 
+// Generate unique claim number
+export async function generateClaimNumber(): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `CLM-${year}-`;
+
+  // Find the latest claim number for this year
+  const latestClaim = await prisma.claim.findFirst({
+    where: {
+      claimNumber: {
+        startsWith: prefix,
+      },
+    },
+    orderBy: {
+      claimNumber: 'desc',
+    },
+  });
+
+  let nextNumber = 1;
+  if (latestClaim) {
+    const currentNumber = parseInt(latestClaim.claimNumber.replace(prefix, ''), 10);
+    nextNumber = currentNumber + 1;
+  }
+
+  return `${prefix}${nextNumber.toString().padStart(6, '0')}`;
+}
+
 // Create a new claim
 export async function createClaim(input: ClaimInput) {
+  // Auto-generate claim number if not provided
+  const claimNumber = input.claimNumber || await generateClaimNumber();
+
   return prisma.claim.create({
     data: {
-      claimNumber: input.claimNumber,
+      claimNumber,
       policyNumber: input.policyNumber,
       claimantName: input.claimantName,
       propertyAddress: input.propertyAddress,
@@ -46,7 +101,7 @@ export async function createClaim(input: ClaimInput) {
 export async function getClaimById(id: string) {
   return prisma.claim.findUnique({
     where: { id },
-    include: { invoices: true },
+    include: { invoices: true, evidence: true },
   });
 }
 
@@ -84,7 +139,7 @@ export async function getClaims(page = 1, limit = 10) {
 }
 
 // Update claim status
-export async function updateClaimStatus(id: string, status: ClaimStatus) {
+export async function updateClaimStatus(id: string, status: string) {
   return prisma.claim.update({
     where: { id },
     data: { status },
@@ -264,7 +319,7 @@ export async function updateInvoiceValidation(
   const hasErrors = flags.some((f) => f.severity === 'error');
   const hasWarnings = flags.some((f) => f.severity === 'warning');
 
-  let validationStatus: ValidationStatus;
+  let validationStatus: string;
   if (hasErrors) {
     validationStatus = ValidationStatus.FAILED;
   } else if (hasWarnings) {
@@ -299,7 +354,7 @@ export async function calculateCoverageAndRecommendation(
   );
 
   // Determine adjudication recommendation
-  let adjudicationStatus: AdjudicationStatus;
+  let adjudicationStatus: string;
   if (recommendedPayout > 0) {
     adjudicationStatus = AdjudicationStatus.RECOMMENDED_APPROVE;
   } else if (analysis.nonCoveredAmount > analysis.coveredAmount) {
@@ -335,5 +390,99 @@ export async function getInvoicesByClaim(claimId: string) {
   return prisma.claimInvoice.findMany({
     where: { claimId },
     orderBy: { createdAt: 'desc' },
+  });
+}
+
+// Create evidence record for a claim
+export async function createClaimEvidence(
+  claimId: string,
+  fileInfo: {
+    fileName: string;
+    fileType: string;
+    filePath?: string;
+    fileSize?: number;
+    evidenceType?: string;
+    description?: string;
+  }
+) {
+  return prisma.claimEvidence.create({
+    data: {
+      claimId,
+      fileName: fileInfo.fileName,
+      fileType: fileInfo.fileType,
+      filePath: fileInfo.filePath,
+      fileSize: fileInfo.fileSize,
+      evidenceType: fileInfo.evidenceType || 'damage_photo',
+      description: fileInfo.description,
+    },
+  });
+}
+
+// Get all evidence for a claim
+export async function getEvidenceByClaim(claimId: string) {
+  return prisma.claimEvidence.findMany({
+    where: { claimId },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+// Update claim with LLM analysis results
+export async function updateClaimWithLLMAnalysis(
+  claimId: string,
+  analysis: LLMClaimAnalysis
+) {
+  return prisma.claim.update({
+    where: { id: claimId },
+    data: {
+      llmAnalysis: JSON.stringify(analysis),
+      llmAnalyzedAt: new Date(),
+      llmConfidence: analysis.confidenceScore,
+      adjusterNarrative: analysis.adjusterNarrative,
+      damageAssessment: JSON.stringify(analysis.damageAssessment),
+      status: ClaimStatus.UNDER_REVIEW,
+    },
+  });
+}
+
+// Update invoice with LLM analysis results
+export async function updateInvoiceWithLLMAnalysis(
+  invoiceId: string,
+  analysis: LLMClaimAnalysis
+) {
+  const coverage = analysis.coverageAnalysis;
+  const recommendedPayout = coverage.netPayable;
+
+  // Map LLM recommended action to adjudication status
+  let adjudicationStatus: string;
+  switch (analysis.recommendedAction) {
+    case 'auto_approve':
+    case 'approve_with_adjustment':
+      adjudicationStatus = AdjudicationStatus.RECOMMENDED_APPROVE;
+      break;
+    case 'deny':
+      adjudicationStatus = AdjudicationStatus.RECOMMENDED_DENY;
+      break;
+    default:
+      adjudicationStatus = AdjudicationStatus.RECOMMENDED_REVIEW;
+  }
+
+  return prisma.claimInvoice.update({
+    where: { id: invoiceId },
+    data: {
+      coverageAnalysis: JSON.stringify(coverage),
+      coveredAmount: coverage.coveredAmount,
+      nonCoveredAmount: coverage.nonCoveredAmount,
+      depreciation: coverage.depreciation,
+      deductible: coverage.deductible,
+      recommendedPayout,
+      lineItemAssessments: JSON.stringify(analysis.lineItemAssessments),
+      validationFlags: JSON.stringify(analysis.validationFlags),
+      validationStatus: analysis.validationFlags.some(f => f.severity === 'error')
+        ? ValidationStatus.FAILED
+        : analysis.validationFlags.some(f => f.severity === 'warning')
+          ? ValidationStatus.FLAGGED
+          : ValidationStatus.PASSED,
+      adjudicationStatus,
+    },
   });
 }

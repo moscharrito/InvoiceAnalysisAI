@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ClaimInput, CauseOfLoss } from '../types/claim';
+import { ClaimInput, CauseOfLoss, DocumentUploadResponse, LLMClaimAnalysis } from '../types/claim';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -8,6 +8,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 30000,
 });
 
 export interface InvoiceAnalysisResponse {
@@ -86,7 +87,12 @@ export const checkHealth = async (): Promise<{ status: string; message: string }
 
 // Claims API
 
-export const createClaim = async (claim: ClaimInput): Promise<ClaimResponse> => {
+export const generateClaimNumber = async (): Promise<string> => {
+  const response = await apiClient.get<{ success: boolean; claimNumber: string }>('/claims/generate-number');
+  return response.data.claimNumber;
+};
+
+export const createClaim = async (claim: Omit<ClaimInput, 'claimNumber'>): Promise<ClaimResponse> => {
   const response = await apiClient.post<ClaimResponse>('/claims', claim);
 
   if (!response.data.success) {
@@ -120,6 +126,47 @@ export const uploadClaimInvoice = async (claimId: string, file: File): Promise<C
 
 export const getClaimInvoices = async (claimId: string): Promise<{ success: boolean; data: any[] }> => {
   const response = await apiClient.get(`/claims/${claimId}/invoices`);
+  return response.data;
+};
+
+// Upload invoices and evidence together for LLM analysis
+export const uploadClaimDocuments = async (
+  claimId: string,
+  invoiceFiles: File[],
+  evidenceFiles: File[]
+): Promise<DocumentUploadResponse> => {
+  const formData = new FormData();
+
+  for (const file of invoiceFiles) {
+    formData.append('invoices', file);
+  }
+  for (const file of evidenceFiles) {
+    formData.append('evidence', file);
+  }
+
+  const response = await apiClient.post<DocumentUploadResponse>(
+    `/claims/${claimId}/documents`,
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000, // 2 minutes for LLM processing
+    }
+  );
+
+  if (!response.data.success) {
+    throw new Error('Failed to process documents');
+  }
+
+  return response.data;
+};
+
+// Re-trigger LLM analysis on existing claim data
+export const reAnalyzeClaim = async (
+  claimId: string
+): Promise<{ success: boolean; data: { claim: any; llmAnalysis: LLMClaimAnalysis } }> => {
+  const response = await apiClient.post(`/claims/${claimId}/analyze`, {}, {
+    timeout: 120000,
+  });
   return response.data;
 };
 

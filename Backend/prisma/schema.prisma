@@ -6,22 +6,30 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model Claim {
-  id              String         @id @default(uuid())
-  claimNumber     String         @unique
+  id              String          @id @default(uuid())
+  claimNumber     String          @unique
   policyNumber    String
   claimantName    String
   propertyAddress String
   dateOfLoss      DateTime
   causeOfLoss     String
-  status          ClaimStatus    @default(PENDING)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  status          String          @default("PENDING")
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   invoices        ClaimInvoice[]
+  evidence        ClaimEvidence[]
+
+  // LLM Analysis Results
+  llmAnalysis       String?
+  llmAnalyzedAt     DateTime?
+  llmConfidence     Float?
+  adjusterNarrative String?
+  damageAssessment  String?
 
   @@index([claimNumber])
   @@index([policyNumber])
@@ -29,9 +37,9 @@ model Claim {
 }
 
 model ClaimInvoice {
-  id                String              @id @default(uuid())
+  id                String    @id @default(uuid())
   claimId           String
-  claim             Claim               @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  claim             Claim     @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
   // File information
   fileName          String
@@ -49,34 +57,37 @@ model ClaimInvoice {
   invoiceDate       DateTime?
   dueDate           DateTime?
   totalAmount       Float?
-  currency          String              @default("USD")
+  currency          String    @default("USD")
 
   // Line items stored as JSON
-  lineItems         String?             // JSON array of line items
+  lineItems         String?
 
   // OCR and processing data
-  ocrRawData        String?             // Raw OCR response
+  ocrRawData        String?
   ocrConfidence     Float?
 
   // Validation results
-  validationFlags   String?             // JSON array of validation flags
-  validationStatus  ValidationStatus    @default(PENDING)
+  validationFlags   String?
+  validationStatus  String    @default("PENDING")
 
   // Coverage analysis
-  coverageAnalysis  String?             // JSON object with coverage details
+  coverageAnalysis  String?
   coveredAmount     Float?
   nonCoveredAmount  Float?
   depreciation      Float?
   deductible        Float?
   recommendedPayout Float?
 
+  // LLM line item assessments
+  lineItemAssessments String?
+
   // Adjudication
-  adjudicationStatus AdjudicationStatus @default(PENDING)
+  adjudicationStatus String   @default("PENDING")
   adjudicationNotes  String?
 
   // Timestamps
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
   processedAt       DateTime?
 
   @@index([claimId])
@@ -84,27 +95,20 @@ model ClaimInvoice {
   @@index([adjudicationStatus])
 }
 
-enum ClaimStatus {
-  PENDING
-  IN_PROGRESS
-  UNDER_REVIEW
-  APPROVED
-  DENIED
-  CLOSED
-}
+model ClaimEvidence {
+  id              String    @id @default(uuid())
+  claimId         String
+  claim           Claim     @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
-enum ValidationStatus {
-  PENDING
-  PASSED
-  FLAGGED
-  FAILED
-}
+  fileName        String
+  fileType        String
+  filePath        String?
+  fileSize        Int?
+  evidenceType    String    @default("damage_photo")
+  description     String?
 
-enum AdjudicationStatus {
-  PENDING
-  RECOMMENDED_APPROVE
-  RECOMMENDED_DENY
-  RECOMMENDED_REVIEW
-  APPROVED
-  DENIED
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([claimId])
 }

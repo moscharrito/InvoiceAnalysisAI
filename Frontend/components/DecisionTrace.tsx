@@ -18,40 +18,40 @@ interface DecisionTraceProps {
 
 const PROCESS_STEPS: Omit<ProcessStep, 'status'>[] = [
   {
-    id: 'upload',
+    id: 'classify',
     title: 'Document Classification',
-    description: 'Validating and classifying document',
-    details: ['File type validation', 'Document type detection', 'Claim association verified'],
-  },
-  {
-    id: 'preprocess',
-    title: 'Claim Validation',
-    description: 'Verifying claim information',
-    details: ['Policy status check', 'Coverage period validation', 'Deductible verification'],
+    description: 'Classifying invoices and evidence photos',
+    details: ['File type validation', 'Invoice vs evidence detection', 'Claim association verified'],
   },
   {
     id: 'ocr',
-    title: 'Invoice Extraction',
-    description: 'Extracting contractor invoice data',
+    title: 'Invoice Data Extraction',
+    description: 'Extracting contractor invoice data via OCR',
     details: ['Vendor information', 'Line item detection', 'Amount extraction'],
   },
   {
-    id: 'analysis',
+    id: 'damage',
+    title: 'Damage Image Analysis',
+    description: 'AI analyzing damage evidence photos',
+    details: ['Damage type identification', 'Severity assessment', 'Cause-of-loss consistency'],
+  },
+  {
+    id: 'pricing',
+    title: 'Price Reasonableness Check',
+    description: 'Validating repair costs against standards',
+    details: ['Xactimate-comparable pricing', 'Market rate comparison', 'Line item evaluation'],
+  },
+  {
+    id: 'coverage',
     title: 'Coverage Determination',
-    description: 'Analyzing coverage applicability',
-    details: ['Covered vs non-covered items', 'Depreciation calculation', 'Deductible application'],
+    description: 'Analyzing coverage and depreciation',
+    details: ['Covered vs non-covered items', 'ACV depreciation calculation', 'Deductible application'],
   },
   {
-    id: 'validation',
-    title: 'Fraud & Compliance',
-    description: 'Running validation checks',
-    details: ['Duplicate invoice check', 'Amount threshold validation', 'Date consistency check'],
-  },
-  {
-    id: 'output',
-    title: 'Adjudication Recommendation',
-    description: 'Generating claim recommendation',
-    details: ['Coverage summary', 'Payment calculation', 'Action recommendation'],
+    id: 'recommendation',
+    title: 'Adjuster Recommendation',
+    description: 'Generating professional claim assessment',
+    details: ['Adjuster narrative', 'Payment recommendation', 'Confidence scoring'],
   },
 ];
 
