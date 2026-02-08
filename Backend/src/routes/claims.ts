@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
-import { analyzeInvoice } from '../services/azureOCR';
+import { analyzeInvoice, parseInvoiceFields } from '../services/azureOCR';
 import {
   createClaim,
   getClaimById,
@@ -207,19 +207,20 @@ router.post(
           fileSize: file.size,
         });
 
-        const ocrResult = await analyzeInvoice(file.buffer, file.mimetype);
+        const rawOcrResult = await analyzeInvoice(file.buffer, file.mimetype);
+        const parsed = parseInvoiceFields(rawOcrResult);
 
         await updateInvoiceWithOCR(invoice.id, {
-          vendorName: ocrResult.vendorName,
-          vendorAddress: ocrResult.vendorAddress,
-          invoiceNumber: ocrResult.invoiceNumber,
-          invoiceDate: ocrResult.invoiceDate,
-          dueDate: ocrResult.dueDate,
-          totalAmount: ocrResult.totalAmount,
-          currency: ocrResult.currency || 'USD',
-          lineItems: ocrResult.lineItems,
-          ocrRawData: JSON.stringify(ocrResult),
-          ocrConfidence: ocrResult.confidence,
+          vendorName: parsed.vendorName,
+          vendorAddress: parsed.vendorAddress,
+          invoiceNumber: parsed.invoiceNumber,
+          invoiceDate: parsed.invoiceDate,
+          dueDate: parsed.dueDate,
+          totalAmount: parsed.totalAmount,
+          currency: parsed.currency || 'USD',
+          lineItems: parsed.lineItems,
+          ocrRawData: JSON.stringify(rawOcrResult),
+          ocrConfidence: parsed.confidence,
         });
 
         // Run basic validation
@@ -240,7 +241,7 @@ router.post(
         processedInvoices.push(invoice);
         ocrResults.push({
           invoiceId: invoice.id,
-          ...ocrResult,
+          ...parsed,
         });
       }
 
@@ -445,19 +446,20 @@ router.post('/:id/invoices', upload.single('file'), async (req: Request, res: Re
       fileSize: file.size,
     });
 
-    const ocrResult = await analyzeInvoice(file.buffer, file.mimetype);
+    const rawOcrResult = await analyzeInvoice(file.buffer, file.mimetype);
+    const parsed = parseInvoiceFields(rawOcrResult);
 
     await updateInvoiceWithOCR(invoice.id, {
-      vendorName: ocrResult.vendorName,
-      vendorAddress: ocrResult.vendorAddress,
-      invoiceNumber: ocrResult.invoiceNumber,
-      invoiceDate: ocrResult.invoiceDate,
-      dueDate: ocrResult.dueDate,
-      totalAmount: ocrResult.totalAmount,
-      currency: ocrResult.currency || 'USD',
-      lineItems: ocrResult.lineItems,
-      ocrRawData: JSON.stringify(ocrResult),
-      ocrConfidence: ocrResult.confidence,
+      vendorName: parsed.vendorName,
+      vendorAddress: parsed.vendorAddress,
+      invoiceNumber: parsed.invoiceNumber,
+      invoiceDate: parsed.invoiceDate,
+      dueDate: parsed.dueDate,
+      totalAmount: parsed.totalAmount,
+      currency: parsed.currency || 'USD',
+      lineItems: parsed.lineItems,
+      ocrRawData: JSON.stringify(rawOcrResult),
+      ocrConfidence: parsed.confidence,
     });
 
     const updatedInvoice = await getInvoiceById(invoice.id);
@@ -483,7 +485,7 @@ router.post('/:id/invoices', upload.single('file'), async (req: Request, res: Re
       success: true,
       data: {
         invoice: finalInvoice,
-        ocrResult,
+        ocrResult: parsed,
         validationFlags,
       },
     });
