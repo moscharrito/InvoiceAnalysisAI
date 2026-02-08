@@ -54,6 +54,8 @@ InvoiceAnalysisAI/
 **Frontend:** Next.js 15, React 18, TypeScript, Tailwind CSS, Axios
 
 **Backend:** Express.js, TypeScript, Prisma ORM, PostgreSQL, Multer
+## Live Demo
+[View Deployed App Here](https://invoice-analysis-frontend.vercel.app/)
 
 **AI/ML:** Azure Form Recognizer (prebuilt-invoice model), Azure OpenAI GPT-4o
 
