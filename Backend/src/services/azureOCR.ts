@@ -9,6 +9,47 @@ interface AnalyzeResult {
   };
 }
 
+export interface ParsedInvoiceData {
+  vendorName?: string;
+  vendorAddress?: string;
+  invoiceNumber?: string;
+  invoiceDate?: string;
+  dueDate?: string;
+  totalAmount?: number;
+  currency?: string;
+  lineItems?: Array<{ description?: string; amount?: number; quantity?: number; unitPrice?: number }>;
+  confidence?: number;
+}
+
+// Extract flat invoice fields from raw Azure OCR result
+export function parseInvoiceFields(result: AnalyzeResult): ParsedInvoiceData {
+  const fields = result.analyzeResult?.documents?.[0]?.fields || {};
+
+  const lineItems: ParsedInvoiceData['lineItems'] = [];
+  const items = fields.Items?.valueArray || fields.items?.valueArray || [];
+  for (const item of items) {
+    const itemFields = item.valueObject || {};
+    lineItems.push({
+      description: itemFields.Description?.valueString || itemFields.description?.valueString,
+      amount: itemFields.Amount?.valueCurrency?.amount ?? itemFields.amount?.valueCurrency?.amount,
+      quantity: itemFields.Quantity?.valueNumber ?? itemFields.quantity?.valueNumber,
+      unitPrice: itemFields.UnitPrice?.valueCurrency?.amount ?? itemFields.unitPrice?.valueCurrency?.amount,
+    });
+  }
+
+  return {
+    vendorName: fields.VendorName?.valueString || fields.vendorName?.valueString,
+    vendorAddress: fields.VendorAddress?.valueString || fields.vendorAddress?.valueString,
+    invoiceNumber: fields.InvoiceId?.valueString || fields.invoiceId?.valueString,
+    invoiceDate: fields.InvoiceDate?.valueDate || fields.invoiceDate?.valueDate,
+    dueDate: fields.DueDate?.valueDate || fields.dueDate?.valueDate,
+    totalAmount: fields.InvoiceTotal?.valueCurrency?.amount ?? fields.invoiceTotal?.valueCurrency?.amount,
+    currency: fields.InvoiceTotal?.valueCurrency?.currencyCode || fields.invoiceTotal?.valueCurrency?.currencyCode || 'USD',
+    lineItems: lineItems.length > 0 ? lineItems : undefined,
+    confidence: result.analyzeResult?.documents?.[0]?.fields?.InvoiceTotal?.confidence,
+  };
+}
+
 export const analyzeInvoice = async (fileBuffer: Buffer, mimeType: string): Promise<AnalyzeResult> => {
   const endpoint = process.env.AZURE_ENDPOINT;
   const key = process.env.AZURE_KEY;
